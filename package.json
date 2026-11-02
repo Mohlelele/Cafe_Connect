@@ -1,0 +1,10 @@
+{
+  "name": "cafe-connect",
+  "private": true,
+  "scripts": {
+    "frontend": "npm --prefix frontend run dev -- --host",
+    "backend": "npm --prefix server run start",
+    "dev": "npm --prefix frontend run dev -- --host",
+    "start": "npm --prefix server run start"
+  }
+}
