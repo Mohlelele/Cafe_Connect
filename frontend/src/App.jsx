@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BellIcon, ClockIcon, LogoIcon, MenuIcon, UserIcon, ArrowRightIcon } from './components/Icons';
+import { BellIcon, ClockIcon, LogoIcon, MenuIcon, ArrowRightIcon } from './components/Icons';
 import menuItemsData from './data/menu';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -11,9 +11,38 @@ import AboutPage from './pages/AboutPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import CartPage from './pages/CartPage';
 
+const STORAGE_KEYS = {
+  student: 'cafe-connect-student',
+  admin: 'cafe-connect-admin',
+};
+
 function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cafe-connect-cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [studentUser, setStudentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.student);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.admin);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [flashMessage, setFlashMessage] = useState({ message: '', tone: 'success' });
   const isAdminView = currentPath.startsWith('/admin');
 
   useEffect(() => {
@@ -22,6 +51,39 @@ function App() {
 
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('cafe-connect-cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    if (studentUser) {
+      localStorage.setItem(STORAGE_KEYS.student, JSON.stringify(studentUser));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.student);
+    }
+  }, [studentUser]);
+
+  useEffect(() => {
+    if (adminUser) {
+      localStorage.setItem(STORAGE_KEYS.admin, JSON.stringify(adminUser));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.admin);
+    }
+  }, [adminUser]);
+
+  useEffect(() => {
+    if (!flashMessage.message) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => setFlashMessage({ message: '', tone: 'success' }), 2600);
+    return () => window.clearTimeout(timeoutId);
+  }, [flashMessage]);
+
+  const showMessage = (message, tone = 'success') => {
+    setFlashMessage({ message, tone });
+  };
 
   const addToCart = (item, quantity = 1) => {
     setCart((current) => {
@@ -33,16 +95,18 @@ function App() {
       }
       return [...current, { ...item, quantity }];
     });
+    showMessage(`${item.name} added to cart.`, 'success');
   };
 
   const updateCartItem = (id, delta) => {
-    setCart((current) =>
-      current
+    setCart((current) => {
+      const next = current
         .map((entry) =>
           entry.id === id ? { ...entry, quantity: Math.max(0, entry.quantity + delta) } : entry
         )
-        .filter((entry) => entry.quantity > 0)
-    );
+        .filter((entry) => entry.quantity > 0);
+      return next;
+    });
   };
 
   const cartCount = useMemo(
@@ -51,7 +115,9 @@ function App() {
   );
 
   const navigate = (path) => {
-    window.history.pushState({}, '', path);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', path);
+    }
     setCurrentPath(path);
   };
 
@@ -61,9 +127,9 @@ function App() {
     if (currentPath === '/about') return <AboutPage navigate={navigate} />;
     if (currentPath === '/announcements') return <AnnouncementsPage navigate={navigate} />;
     if (currentPath === '/cart') return <CartPage cart={cart} navigate={navigate} updateCartItem={updateCartItem} />;
-    if (currentPath === '/login') return <LoginPage navigate={navigate} />;
-    if (currentPath === '/register') return <RegisterPage navigate={navigate} />;
-    if (currentPath === '/admin') return <AdminPage navigate={navigate} />;
+    if (currentPath === '/login') return <LoginPage navigate={navigate} onLogin={setStudentUser} showMessage={showMessage} />;
+    if (currentPath === '/register') return <RegisterPage navigate={navigate} onRegister={setStudentUser} showMessage={showMessage} />;
+    if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={setAdminUser} showMessage={showMessage} />;
     return <HomePage navigate={navigate} menuItems={menuItemsData} addToCart={addToCart} />;
   };
 
@@ -91,9 +157,9 @@ function App() {
           </nav>
 
           <div className="header-actions">
-            <button type="button" className="user-pill" onClick={() => navigate('/')}>
+            <button type="button" className="user-pill" onClick={() => { if (adminUser) { setAdminUser(null); showMessage('Admin logged out.', 'info'); } navigate('/admin'); }}>
               <span className="user-avatar">A</span>
-              <span className="user-label">Admin</span>
+              <span className="user-label">{adminUser ? adminUser.name : 'Admin Login'}</span>
               <ArrowRightIcon className="user-arrow" />
             </button>
           </div>
@@ -144,9 +210,9 @@ function App() {
             </span>
           </button>
 
-          <button type="button" className="user-pill" onClick={() => navigate('/login')}>
-            <span className="user-avatar">J</span>
-            <span className="user-label">John Doe</span>
+          <button type="button" className="user-pill" onClick={() => navigate(studentUser ? '/menu' : '/login')}>
+            <span className="user-avatar">{(studentUser?.name || 'G').charAt(0).toUpperCase()}</span>
+            <span className="user-label">{studentUser ? studentUser.name : 'Login'}</span>
             <ArrowRightIcon className="user-arrow" />
           </button>
         </div>
@@ -157,6 +223,11 @@ function App() {
   return (
     <div className="app-shell">
       {renderHeader()}
+      {flashMessage.message ? (
+        <div className={`app-toast ${flashMessage.tone}`} role="status" aria-live="polite">
+          {flashMessage.message}
+        </div>
+      ) : null}
       <main className="page-content">{renderPage()}</main>
     </div>
   );

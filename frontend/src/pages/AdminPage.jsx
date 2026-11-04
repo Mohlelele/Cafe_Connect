@@ -1,13 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardIcon, UtensilsIcon, WalletIcon } from '../components/Icons';
-import menuItemsData from '../data/menu';
-
-const defaultOrders = [
-  { id: '#CC-1024', customer: 'Aisha N.', item: 'Chicken Burger', total: 650, status: 'Prep' },
-  { id: '#CC-1025', customer: 'Daniel K.', item: 'Rice & Curry', total: 420, status: 'Ready' },
-  { id: '#CC-1026', customer: 'Lilian M.', item: 'Fruit Smoothie', total: 280, status: 'Paid' },
-  { id: '#CC-1027', customer: 'James O.', item: 'Cheese Pizza', total: 760, status: 'Prep' },
-];
+import { apiRequest } from '../api';
 
 const initialForm = {
   name: '',
@@ -15,14 +8,63 @@ const initialForm = {
   price: '',
 };
 
-function AdminPage({ navigate }) {
-  const [menuItems, setMenuItems] = useState(
-    menuItemsData.map((item) => ({ ...item, available: true }))
-  );
-  const [orders, setOrders] = useState(defaultOrders);
+const initialStudentForm = {
+  name: '',
+  email: '',
+  password: '',
+};
+
+const initialPasswordForm = {
+  studentId: '',
+  newPassword: '',
+};
+
+function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
+  const [menuItems, setMenuItems] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [students, setStudents] = useState([]);
   const [form, setForm] = useState(initialForm);
+  const [studentForm, setStudentForm] = useState(initialStudentForm);
+  const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
   const [activeTab, setActiveTab] = useState('Live Orders Queue');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: 'admin@cafeconnect.com', password: 'admin123' });
   const menuFormRef = useRef(null);
+
+  const loadDashboardData = async () => {
+    try {
+      const [menuResponse, ordersResponse, studentsResponse] = await Promise.all([
+        apiRequest('/api/admin/menu'),
+        apiRequest('/api/admin/orders'),
+        apiRequest('/api/admin/students'),
+      ]);
+
+      setMenuItems((menuResponse || []).map((item) => ({
+        ...item,
+        name: item.item_name || item.name,
+        available: item.availability ?? true,
+        image: item.image_url || item.image || '',
+      })));
+
+      setOrders((ordersResponse || []).map((order) => ({
+        id: order.order_id || order.id,
+        customer: order.customer_name || order.customer || 'Student',
+        item: order.item_name || 'Cafe order',
+        total: Number(order.total_amount || order.total || 0),
+        status: order.order_status || order.status || 'Pending',
+      })));
+
+      setStudents(studentsResponse || []);
+    } catch (error) {
+      showMessage(error.message || 'Could not load admin data.', 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (adminUser) {
+      loadDashboardData();
+    }
+  }, [adminUser]);
 
   const stats = useMemo(() => {
     const revenue = orders.reduce((sum, order) => sum + Number(order.total), 0);
@@ -42,25 +84,74 @@ function AdminPage({ navigate }) {
     setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const handleAddMenuItem = (event) => {
+  const handleLoginFormChange = (event) => {
+    const { name, value } = event.target;
+    setLoginForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleStudentFormChange = (event) => {
+    const { name, value } = event.target;
+    setStudentForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handlePasswordFormChange = (event) => {
+    const { name, value } = event.target;
+    setPasswordForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleAdminLogin = async (event) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const payload = await apiRequest('/api/admin/login', {
+        method: 'POST',
+        body: JSON.stringify(loginForm),
+      });
+      setAdminUser(payload.admin);
+      showMessage(payload.message || 'Admin login successful.', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Admin login failed.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddMenuItem = async (event) => {
     event.preventDefault();
 
     if (!form.name || !form.description || !form.price) {
+      showMessage('Please complete the menu item form.', 'error');
       return;
     }
 
-    const newItem = {
-      id: Date.now(),
-      name: form.name,
-      description: form.description,
-      price: Number(form.price),
-      image: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
-      available: true,
-    };
+    try {
+      const payload = await apiRequest('/api/admin/menu', {
+        method: 'POST',
+        body: JSON.stringify({
+          item_name: form.name,
+          description: form.description,
+          price: form.price,
+          image_url: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
+        }),
+      });
 
-    setMenuItems((current) => [newItem, ...current]);
-    setForm(initialForm);
-    setActiveTab('Manage Menu & Prices');
+      setMenuItems((current) => [{
+        id: payload.item.id,
+        name: payload.item.item_name,
+        item_name: payload.item.item_name,
+        description: payload.item.description,
+        price: Number(payload.item.price || 0),
+        availability: true,
+        available: true,
+        image: payload.item.image_url || '',
+      }, ...current]);
+      setForm(initialForm);
+      setActiveTab('Manage Menu & Prices');
+      showMessage('Menu item added successfully.', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Menu item creation failed.', 'error');
+    }
   };
 
   const focusAddItemForm = () => {
@@ -69,19 +160,106 @@ function AdminPage({ navigate }) {
     input?.focus();
   };
 
-  const toggleItemAvailability = (id) => {
-    setMenuItems((current) =>
-      current.map((item) =>
-        item.id === id ? { ...item, available: !item.available } : item
-      )
-    );
+  const toggleItemAvailability = async (id) => {
+    const item = menuItems.find((entry) => entry.id === id);
+    if (!item) return;
+
+    try {
+      const payload = await apiRequest(`/api/admin/menu/${id}/availability`, {
+        method: 'PATCH',
+        body: JSON.stringify({ availability: !item.available }),
+      });
+      setMenuItems((current) => current.map((entry) => entry.id === id ? { ...entry, available: !entry.available, availability: !entry.availability } : entry));
+      showMessage(payload.message || 'Menu item updated.', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Failed to update menu availability.', 'error');
+    }
   };
 
-  const updateOrderStatus = (id, nextStatus) => {
-    setOrders((current) =>
-      current.map((order) => (order.id === id ? { ...order, status: nextStatus } : order))
-    );
+  const updateOrderStatus = async (id, nextStatus) => {
+    try {
+      const payload = await apiRequest(`/api/admin/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setOrders((current) => current.map((order) => (order.id === id ? { ...order, status: nextStatus } : order)));
+      showMessage(payload.message || 'Order status updated.', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Status update failed.', 'error');
+    }
   };
+
+  const handleCreateStudent = async (event) => {
+    event.preventDefault();
+
+    if (!studentForm.name || !studentForm.email || !studentForm.password) {
+      showMessage('Student details are required.', 'error');
+      return;
+    }
+
+    try {
+      const payload = await apiRequest('/api/admin/students', {
+        method: 'POST',
+        body: JSON.stringify(studentForm),
+      });
+      setStudents((current) => [payload.student, ...current]);
+      setStudentForm(initialStudentForm);
+      showMessage(payload.message || 'Student account created.', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Student creation failed.', 'error');
+    }
+  };
+
+  const handleResetPassword = async (event) => {
+    event.preventDefault();
+
+    if (!passwordForm.studentId || !passwordForm.newPassword) {
+      showMessage('Select a student and enter a new password.', 'error');
+      return;
+    }
+
+    try {
+      const payload = await apiRequest(`/api/admin/students/${passwordForm.studentId}/reset-password`, {
+        method: 'PATCH',
+        body: JSON.stringify({ newPassword: passwordForm.newPassword }),
+      });
+      setPasswordForm(initialPasswordForm);
+      showMessage(payload.message || 'Password reset.', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Password reset failed.', 'error');
+    }
+  };
+
+  const handleLogout = () => {
+    setAdminUser(null);
+    showMessage('Admin logged out.', 'info');
+    navigate('/admin');
+  };
+
+  if (!adminUser) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <h2 className="auth-title">Admin Login</h2>
+          <form className="auth-form" onSubmit={handleAdminLogin}>
+            <label className="form-field">
+              Email
+              <input className="form-input" type="email" name="email" value={loginForm.email} onChange={handleLoginFormChange} required />
+            </label>
+
+            <label className="form-field">
+              Password
+              <input className="form-input" type="password" name="password" value={loginForm.password} onChange={handleLoginFormChange} required />
+            </label>
+
+            <button type="submit" className="primary-btn" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in...' : 'Admin Login'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-page">
@@ -90,9 +268,10 @@ function AdminPage({ navigate }) {
           <div className="admin-tag">Admin operations</div>
           <h1>Richfield Campus</h1>
         </div>
-        <button type="button" className="primary-btn hero-action" onClick={focusAddItemForm}>
-          + Add New Item
-        </button>
+        <div className="admin-header-actions">
+          <button type="button" className="secondary-btn" onClick={handleLogout}>Logout</button>
+          <button type="button" className="primary-btn hero-action" onClick={focusAddItemForm}>+ Add New Item</button>
+        </div>
       </div>
 
       <section className="admin-main-panel">
@@ -115,7 +294,7 @@ function AdminPage({ navigate }) {
       </div>
 
       <div className="admin-tabs">
-        {['Live Orders Queue', 'Manage Menu & Prices', 'Banner Announcements'].map((tab) => (
+        {['Live Orders Queue', 'Manage Menu & Prices', 'Student Accounts'].map((tab) => (
           <button
             key={tab}
             type="button"
@@ -135,79 +314,116 @@ function AdminPage({ navigate }) {
           </div>
 
           <div className="order-list">
-            {orders.map((order) => (
-              <div className="order-row" key={order.id}>
-                <strong>{order.id}</strong>
-                <span>{order.customer}</span>
-                <span>{order.item}</span>
-                <div>
-                  <span className={`status-pill ${
-                    order.status === 'Prep'
-                      ? 'prep'
-                      : order.status === 'Ready'
-                        ? 'ready'
-                        : 'paid'
-                  }`}>{order.status}</span>
+            {orders.length === 0 ? (
+              <p className="empty-state-copy">No orders yet.</p>
+            ) : (
+              orders.map((order) => (
+                <div className="order-row" key={order.id}>
+                  <strong>{`#${order.id}`}</strong>
+                  <span>{order.customer}</span>
+                  <span>{order.item}</span>
+                  <div>
+                    <span className={`status-pill ${
+                      order.status === 'Prep'
+                        ? 'prep'
+                        : order.status === 'Ready'
+                          ? 'ready'
+                          : 'paid'
+                    }`}>{order.status}</span>
+                  </div>
+                  <span>R {Number(order.total || 0).toFixed(2)}</span>
+                  <select
+                    value={order.status}
+                    onChange={(event) => updateOrderStatus(order.id, event.target.value)}
+                    className="status-select"
+                    aria-label={`Update status for #${order.id}`}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Prep">Prep</option>
+                    <option value="Ready">Ready</option>
+                    <option value="Paid">Paid</option>
+                  </select>
                 </div>
-                <span>KSh {order.total}</span>
-                <select
-                  value={order.status}
-                  onChange={(event) => updateOrderStatus(order.id, event.target.value)}
-                  className="status-select"
-                  aria-label={`Update status for ${order.id}`}
-                >
-                  <option value="Prep">Prep</option>
-                  <option value="Ready">Ready</option>
-                  <option value="Paid">Paid</option>
-                </select>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
 
         <aside className="admin-panel">
-          <div className="section-header">
-            <h2 className="section-title">Menu inventory</h2>
-          </div>
-
-          <div className="menu-list">
-            {menuItems.map((item) => (
-              <div className="menu-table-row" key={item.id}>
-                <strong>{item.name}</strong>
-                <span>{item.available ? 'Available' : 'Hidden'}</span>
-                <span>R {item.price}</span>
-                <button type="button" className="small-action" onClick={() => toggleItemAvailability(item.id)}>
-                  {item.available ? 'Hide' : 'Show'}
-                </button>
+          {activeTab === 'Manage Menu & Prices' && (
+            <>
+              <div className="section-header">
+                <h2 className="section-title">Menu inventory</h2>
               </div>
-            ))}
-          </div>
 
-          <form ref={menuFormRef} className="admin-form" onSubmit={handleAddMenuItem}>
-            <h3>Add menu item</h3>
-            <input
-              type="text"
-              name="name"
-              placeholder="Item name"
-              value={form.name}
-              onChange={handleFormChange}
-            />
-            <textarea
-              name="description"
-              placeholder="Description"
-              value={form.description}
-              onChange={handleFormChange}
-              rows="3"
-            />
-            <input
-              type="number"
-              name="price"
-              placeholder="Price"
-              value={form.price}
-              onChange={handleFormChange}
-            />
-            <button type="submit" className="primary-btn">Save item</button>
-          </form>
+              <div className="menu-list">
+                {menuItems.map((item) => (
+                  <div className="menu-table-row" key={item.id}>
+                    <strong>{item.name}</strong>
+                    <span>{item.available ? 'Available' : 'Hidden'}</span>
+                    <span>R {Number(item.price || 0).toFixed(2)}</span>
+                    <button type="button" className="small-action" onClick={() => toggleItemAvailability(item.id)}>
+                      {item.available ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <form ref={menuFormRef} className="admin-form" onSubmit={handleAddMenuItem}>
+                <h3>Add menu item</h3>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Item name"
+                  value={form.name}
+                  onChange={handleFormChange}
+                />
+                <textarea
+                  name="description"
+                  placeholder="Description"
+                  value={form.description}
+                  onChange={handleFormChange}
+                  rows="3"
+                />
+                <input
+                  type="number"
+                  name="price"
+                  placeholder="Price"
+                  value={form.price}
+                  onChange={handleFormChange}
+                />
+                <button type="submit" className="primary-btn">Save item</button>
+              </form>
+            </>
+          )}
+
+          {activeTab === 'Student Accounts' && (
+            <>
+              <div className="section-header">
+                <h2 className="section-title">Student accounts</h2>
+              </div>
+
+              <form className="admin-form" onSubmit={handleCreateStudent}>
+                <h3>Create student account</h3>
+                <input type="text" name="name" placeholder="Full name" value={studentForm.name} onChange={handleStudentFormChange} />
+                <input type="email" name="email" placeholder="Email" value={studentForm.email} onChange={handleStudentFormChange} />
+                <input type="text" name="password" placeholder="Temporary password" value={studentForm.password} onChange={handleStudentFormChange} />
+                <button type="submit" className="primary-btn">Create student</button>
+              </form>
+
+              <form className="admin-form" onSubmit={handleResetPassword}>
+                <h3>Reset student password</h3>
+                <select name="studentId" value={passwordForm.studentId} onChange={handlePasswordFormChange}>
+                  <option value="">Select student</option>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>{student.name} - {student.email}</option>
+                  ))}
+                </select>
+                <input type="text" name="newPassword" placeholder="New password" value={passwordForm.newPassword} onChange={handlePasswordFormChange} />
+                <button type="submit" className="primary-btn">Reset password</button>
+              </form>
+            </>
+          )}
         </aside>
       </div>
     </div>

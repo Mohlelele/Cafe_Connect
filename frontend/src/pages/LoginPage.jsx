@@ -1,7 +1,32 @@
-function LoginPage({ navigate }) {
-  const handleSubmit = (event) => {
+import { useState } from 'react';
+import { apiRequest } from '../api';
+
+function LoginPage({ navigate, onLogin, showMessage }) {
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    navigate('/menu');
+    setIsSubmitting(true);
+
+    try {
+      const payload = await apiRequest('/api/login', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      onLogin(payload.user);
+      showMessage(payload.message || 'Login successful.', 'success');
+      navigate('/menu');
+    } catch (error) {
+      showMessage(error.message || 'Login failed.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -11,15 +36,17 @@ function LoginPage({ navigate }) {
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="form-field">
             Email
-            <input className="form-input" type="email" placeholder="student@example.com" />
+            <input className="form-input" type="email" name="email" placeholder="student@example.com" value={form.email} onChange={handleChange} required />
           </label>
 
           <label className="form-field">
             Password
-            <input className="form-input" type="password" placeholder="Enter your password" />
+            <input className="form-input" type="password" name="password" placeholder="Enter your password" value={form.password} onChange={handleChange} required />
           </label>
 
-          <button type="submit" className="primary-btn">Login</button>
+          <button type="submit" className="primary-btn" disabled={isSubmitting}>
+            {isSubmitting ? 'Logging in...' : 'Login'}
+          </button>
         </form>
 
         <p className="auth-link-row">
