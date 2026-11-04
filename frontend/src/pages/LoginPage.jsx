@@ -19,7 +19,7 @@ function LoginPage({ navigate, onLogin, showMessage }) {
         method: 'POST',
         body: JSON.stringify(form),
       });
-      onLogin(payload.user);
+      onLogin(payload.user, payload.token);
       showMessage(payload.message || 'Login successful.', 'success');
       navigate('/menu');
     } catch (error) {

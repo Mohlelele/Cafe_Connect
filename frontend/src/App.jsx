@@ -3,6 +3,7 @@ import { BellIcon, ClockIcon, LogoIcon, MenuIcon, ArrowRightIcon } from './compo
 import menuItemsData from './data/menu';
 import { apiRequest } from './api';
 import HomePage from './pages/HomePage';
+import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MenuPage from './pages/MenuPage';
@@ -15,6 +16,7 @@ import CartPage from './pages/CartPage';
 const STORAGE_KEYS = {
   student: 'cafe-connect-student',
   admin: 'cafe-connect-admin',
+  token: 'cafe-connect-auth-token',
 };
 
 function App() {
@@ -50,6 +52,13 @@ function App() {
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
+    }
+  });
+  const [authToken, setAuthToken] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.token) || '';
+    } catch {
+      return '';
     }
   });
   const [flashMessage, setFlashMessage] = useState({ message: '', tone: 'success' });
@@ -108,6 +117,23 @@ function App() {
   }, [adminUser]);
 
   useEffect(() => {
+    if (authToken) {
+      localStorage.setItem(STORAGE_KEYS.token, authToken);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.token);
+    }
+  }, [authToken]);
+
+  useEffect(() => {
+    if (currentPath === '/' && studentUser) {
+      navigate('/menu');
+    }
+    if (currentPath === '/' && adminUser) {
+      navigate('/admin');
+    }
+  }, [studentUser, adminUser, currentPath]);
+
+  useEffect(() => {
     if (!flashMessage.message) {
       return undefined;
     }
@@ -118,6 +144,32 @@ function App() {
 
   const showMessage = (message, tone = 'success') => {
     setFlashMessage({ message, tone });
+  };
+
+  const handleStudentLogin = (user, token = '') => {
+    setStudentUser(user);
+    setAdminUser(null);
+    setAuthToken(token);
+  };
+
+  const handleAdminLogin = (user, token = '') => {
+    setAdminUser(user);
+    setStudentUser(null);
+    setAuthToken(token);
+  };
+
+  const logoutStudent = () => {
+    setStudentUser(null);
+    setAuthToken('');
+    showMessage('You have been logged out.', 'info');
+    navigate('/');
+  };
+
+  const logoutAdmin = () => {
+    setAdminUser(null);
+    setAuthToken('');
+    showMessage('Admin logged out.', 'info');
+    navigate('/');
   };
 
   const addToCart = (item, quantity = 1) => {
@@ -200,18 +252,31 @@ function App() {
   };
 
   const renderPage = () => {
+    if (currentPath === '/' && !studentUser && !adminUser) {
+      return <WelcomePage navigate={navigate} />;
+    }
+
+    if (['/menu', '/orders', '/cart'].includes(currentPath) && !studentUser) {
+      return <WelcomePage navigate={navigate} />;
+    }
+
     if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
     if (currentPath === '/orders') return <OrdersPage navigate={navigate} orders={orders} studentUser={studentUser} />;
     if (currentPath === '/about') return <AboutPage navigate={navigate} />;
     if (currentPath === '/announcements') return <AnnouncementsPage navigate={navigate} />;
     if (currentPath === '/cart') return <CartPage cart={cart} navigate={navigate} updateCartItem={updateCartItem} onCheckout={placeOrder} studentUser={studentUser} />;
-    if (currentPath === '/login') return <LoginPage navigate={navigate} onLogin={setStudentUser} showMessage={showMessage} />;
-    if (currentPath === '/register') return <RegisterPage navigate={navigate} onRegister={setStudentUser} showMessage={showMessage} />;
-    if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={setAdminUser} showMessage={showMessage} />;
+    if (currentPath === '/login') return <LoginPage navigate={navigate} onLogin={handleStudentLogin} showMessage={showMessage} />;
+    if (currentPath === '/register') return <RegisterPage navigate={navigate} onRegister={() => {}} showMessage={showMessage} />;
+    if (currentPath === '/admin-login') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} />;
+    if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} />;
     return <HomePage navigate={navigate} menuItems={menuItems} addToCart={addToCart} />;
   };
 
   const renderHeader = () => {
+    if (['/', '/login', '/register', '/admin-login'].includes(currentPath) && !studentUser && !adminUser) {
+      return null;
+    }
+
     if (isAdminView) {
       return (
         <header className="main-header admin-header">
@@ -235,7 +300,7 @@ function App() {
           </nav>
 
           <div className="header-actions">
-            <button type="button" className="user-pill" onClick={() => { if (adminUser) { setAdminUser(null); showMessage('Admin logged out.', 'info'); } navigate('/admin'); }}>
+            <button type="button" className="user-pill" onClick={() => { if (adminUser) { logoutAdmin(); return; } navigate('/admin-login'); }}>
               <span className="user-avatar">A</span>
               <span className="user-label">{adminUser ? adminUser.name : 'Admin Login'}</span>
               <ArrowRightIcon className="user-arrow" />
@@ -293,9 +358,7 @@ function App() {
             className="user-pill"
             onClick={() => {
               if (studentUser) {
-                setStudentUser(null);
-                showMessage('You have been logged out.', 'info');
-                navigate('/login');
+                logoutStudent();
                 return;
               }
               navigate('/login');

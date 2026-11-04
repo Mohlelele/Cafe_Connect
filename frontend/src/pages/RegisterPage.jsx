@@ -19,7 +19,7 @@ function RegisterPage({ navigate, onRegister, showMessage }) {
         method: 'POST',
         body: JSON.stringify(form),
       });
-      onRegister(payload.student);
+      onRegister(payload.student, payload.token || '');
       showMessage(payload.message || 'Account created successfully.', 'success');
       navigate('/login');
     } catch (error) {

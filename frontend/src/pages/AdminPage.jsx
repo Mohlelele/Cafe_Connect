@@ -108,8 +108,9 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
         method: 'POST',
         body: JSON.stringify(loginForm),
       });
-      setAdminUser(payload.admin);
+      setAdminUser(payload.admin, payload.token);
       showMessage(payload.message || 'Admin login successful.', 'success');
+      navigate('/admin');
     } catch (error) {
       showMessage(error.message || 'Admin login failed.', 'error');
     } finally {

@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const cors = require('cors');
 const db = require('./db');
 const { hashPassword, verifyPassword } = require('./auth');
@@ -15,6 +16,7 @@ const allowedOrigins = [
 const DEFAULT_ADMIN_EMAIL = 'admin@cafeconnect.com';
 const DEFAULT_ADMIN_PASSWORD = 'admin123';
 const demoUsers = [];
+const activeSessions = new Map();
 const demoMenu = [
   {
     id: 1,
@@ -85,6 +87,25 @@ const normalizeUser = (user) => ({
 
 const respondWithMenu = (items = []) => items.map(normalizeMenuItem);
 
+const createSession = (role, user) => {
+  const token = crypto.randomBytes(24).toString('hex');
+  activeSessions.set(token, { role, userId: user.id, email: user.email });
+  return token;
+};
+
+const requireSession = (requiredRole) => (req, res, next) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const session = token ? activeSessions.get(token) : null;
+
+  if (!session || session.role !== requiredRole) {
+    return res.status(401).json({ message: 'Unauthorized. Please log in again.' });
+  }
+
+  req.session = session;
+  return next();
+};
+
 const matchPassword = async (inputPassword, storedPassword) => {
   if (!storedPassword) return false;
   if (typeof storedPassword === 'string' && storedPassword.startsWith('$2')) {
@@ -97,7 +118,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'Cafe Connect API is running' });
 });
 
-app.get('/api/menu', async (req, res) => {
+app.get('/api/menu', requireSession('student'), async (req, res) => {
   try {
     if (!isDbConnected) {
       return res.json(respondWithMenu(demoMenu));
@@ -168,7 +189,8 @@ app.post('/api/login', async (req, res) => {
         return res.status(401).json({ message: 'Invalid email or password.' });
       }
 
-      return res.json({ message: 'Login successful', user: { id: user.id, name: user.name, email: user.email } });
+      const token = createSession('student', user);
+      return res.json({ message: 'Login successful', token, user: { id: user.id, name: user.name, email: user.email } });
     }
 
     const [rows] = await db.promise().query('SELECT * FROM students WHERE email = ?', [safeEmail]);
@@ -182,7 +204,8 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
-    return res.json({ message: 'Login successful', user: { id: user.student_id, name: user.name, email: user.email } });
+    const token = createSession('student', { id: user.student_id, name: user.name, email: user.email });
+    return res.json({ message: 'Login successful', token, user: { id: user.student_id, name: user.name, email: user.email } });
   } catch (error) {
     console.error('Login failed:', error.message);
     return res.status(500).json({ message: 'Login failed.' });
@@ -216,7 +239,8 @@ app.post('/api/admin/login', async (req, res) => {
         return res.status(401).json({ message: 'Invalid admin email or password.' });
       }
 
-      return res.json({ message: 'Admin login successful', admin: { id: admin.id, name: admin.name, email: admin.email } });
+      const token = createSession('admin', admin);
+      return res.json({ message: 'Admin login successful', token, admin: { id: admin.id, name: admin.name, email: admin.email } });
     }
 
     const [rows] = await db.promise().query('SELECT * FROM administrators WHERE email = ?', [safeEmail]);
@@ -230,14 +254,15 @@ app.post('/api/admin/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid admin email or password.' });
     }
 
-    return res.json({ message: 'Admin login successful', admin: { id: admin.admin_id, name: admin.name, email: admin.email } });
+    const token = createSession('admin', { id: admin.admin_id, name: admin.name, email: admin.email });
+    return res.json({ message: 'Admin login successful', token, admin: { id: admin.admin_id, name: admin.name, email: admin.email } });
   } catch (error) {
     console.error('Admin login failed:', error.message);
     return res.status(500).json({ message: 'Admin login failed.' });
   }
 });
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', requireSession('student'), async (req, res) => {
   const { items, paymentMethod, customerName = 'Student', studentId = null } = req.body;
   if (!items || items.length === 0) {
     return res.status(400).json({ message: 'Order must contain at least one item.' });
@@ -271,7 +296,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-app.get('/api/admin/students', async (req, res) => {
+app.get('/api/admin/students', requireSession('admin'), async (req, res) => {
   try {
     if (!isDbConnected) {
       return res.json(demoUsers.map((user) => ({ id: user.id, name: user.name, email: user.email })));
@@ -285,7 +310,7 @@ app.get('/api/admin/students', async (req, res) => {
   }
 });
 
-app.post('/api/admin/students', async (req, res) => {
+app.post('/api/admin/students', requireSession('admin'), async (req, res) => {
   const { name, email, password } = req.body;
   const safeName = String(name || '').trim();
   const safeEmail = String(email || '').trim().toLowerCase();
@@ -322,7 +347,7 @@ app.post('/api/admin/students', async (req, res) => {
   }
 });
 
-app.patch('/api/admin/students/:id/reset-password', async (req, res) => {
+app.patch('/api/admin/students/:id/reset-password', requireSession('admin'), async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;
   const safePassword = String(newPassword || '').trim();
@@ -350,7 +375,7 @@ app.patch('/api/admin/students/:id/reset-password', async (req, res) => {
   }
 });
 
-app.get('/api/admin/orders', async (req, res) => {
+app.get('/api/admin/orders', requireSession('admin'), async (req, res) => {
   try {
     if (!isDbConnected) {
       return res.json(demoOrders.map((order) => ({ order_id: order.id, order_number: order.orderNumber, order_status: order.status, total_amount: order.totalAmount, customer_name: order.customerName })));
@@ -369,7 +394,7 @@ app.get('/api/admin/orders', async (req, res) => {
   }
 });
 
-app.patch('/api/admin/orders/:id/status', async (req, res) => {
+app.patch('/api/admin/orders/:id/status', requireSession('admin'), async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
@@ -395,7 +420,7 @@ app.patch('/api/admin/orders/:id/status', async (req, res) => {
   }
 });
 
-app.get('/api/admin/menu', async (req, res) => {
+app.get('/api/admin/menu', requireSession('admin'), async (req, res) => {
   try {
     if (!isDbConnected) {
       return res.json(respondWithMenu(demoMenu));
@@ -409,7 +434,7 @@ app.get('/api/admin/menu', async (req, res) => {
   }
 });
 
-app.post('/api/admin/menu', async (req, res) => {
+app.post('/api/admin/menu', requireSession('admin'), async (req, res) => {
   const { item_name, description, price, image_url } = req.body;
 
   if (!item_name || !description || !price) {
@@ -431,7 +456,7 @@ app.post('/api/admin/menu', async (req, res) => {
   }
 });
 
-app.patch('/api/admin/menu/:id/availability', async (req, res) => {
+app.patch('/api/admin/menu/:id/availability', requireSession('admin'), async (req, res) => {
   const { id } = req.params;
   const { availability } = req.body;
 
