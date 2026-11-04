@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BellIcon, ClockIcon, LogoIcon, MenuIcon, ArrowRightIcon } from './components/Icons';
 import menuItemsData from './data/menu';
+import { apiRequest } from './api';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -18,9 +19,18 @@ const STORAGE_KEYS = {
 
 function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
+  const [menuItems, setMenuItems] = useState(menuItemsData);
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('cafe-connect-cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [orders, setOrders] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cafe-connect-orders');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -55,6 +65,31 @@ function App() {
   useEffect(() => {
     localStorage.setItem('cafe-connect-cart', JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('cafe-connect-orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    const loadMenu = async () => {
+      try {
+        const response = await apiRequest('/api/menu');
+        if (Array.isArray(response) && response.length > 0) {
+          setMenuItems(response.map((item) => ({
+            ...item,
+            name: item.item_name || item.name,
+            price: Number(item.price || 0),
+            available: item.availability ?? true,
+            image: item.image_url || item.image || '',
+          })));
+        }
+      } catch {
+        setMenuItems(menuItemsData);
+      }
+    };
+
+    loadMenu();
+  }, []);
 
   useEffect(() => {
     if (studentUser) {
@@ -109,6 +144,49 @@ function App() {
     });
   };
 
+  const placeOrder = async (paymentMethod = 'Cash') => {
+    if (!studentUser) {
+      showMessage('Please log in before placing an order.', 'error');
+      navigate('/login');
+      return;
+    }
+
+    if (!cart.length) {
+      showMessage('Your cart is empty.', 'error');
+      return;
+    }
+
+    try {
+      const payload = await apiRequest('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          items: cart,
+          paymentMethod,
+          customerName: studentUser.name,
+          studentId: studentUser.id,
+        }),
+      });
+
+      const orderNumber = payload.orderNumber || `CC-${Date.now()}`;
+      const newOrder = {
+        id: orderNumber,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        customer: studentUser.name,
+        status: 'Pending',
+        items: cart.map((entry) => ({ label: `${entry.quantity}x ${entry.name}`, price: Number(entry.price || 0) * Number(entry.quantity || 1) })),
+        total: Number(payload.totalAmount || cart.reduce((sum, entry) => sum + Number(entry.price || 0) * Number(entry.quantity || 1), 0)),
+        payment: paymentMethod,
+      };
+
+      setOrders((current) => [newOrder, ...current]);
+      setCart([]);
+      showMessage(`Order ${orderNumber} placed successfully.`, 'success');
+      navigate('/orders');
+    } catch (error) {
+      showMessage(error.message || 'Order failed. Please try again.', 'error');
+    }
+  };
+
   const cartCount = useMemo(
     () => cart.reduce((total, entry) => total + entry.quantity, 0),
     [cart]
@@ -122,15 +200,15 @@ function App() {
   };
 
   const renderPage = () => {
-    if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} />;
-    if (currentPath === '/orders') return <OrdersPage navigate={navigate} cart={cart} />;
+    if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
+    if (currentPath === '/orders') return <OrdersPage navigate={navigate} orders={orders} studentUser={studentUser} />;
     if (currentPath === '/about') return <AboutPage navigate={navigate} />;
     if (currentPath === '/announcements') return <AnnouncementsPage navigate={navigate} />;
-    if (currentPath === '/cart') return <CartPage cart={cart} navigate={navigate} updateCartItem={updateCartItem} />;
+    if (currentPath === '/cart') return <CartPage cart={cart} navigate={navigate} updateCartItem={updateCartItem} onCheckout={placeOrder} studentUser={studentUser} />;
     if (currentPath === '/login') return <LoginPage navigate={navigate} onLogin={setStudentUser} showMessage={showMessage} />;
     if (currentPath === '/register') return <RegisterPage navigate={navigate} onRegister={setStudentUser} showMessage={showMessage} />;
     if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={setAdminUser} showMessage={showMessage} />;
-    return <HomePage navigate={navigate} menuItems={menuItemsData} addToCart={addToCart} />;
+    return <HomePage navigate={navigate} menuItems={menuItems} addToCart={addToCart} />;
   };
 
   const renderHeader = () => {
@@ -210,7 +288,19 @@ function App() {
             </span>
           </button>
 
-          <button type="button" className="user-pill" onClick={() => navigate(studentUser ? '/menu' : '/login')}>
+          <button
+            type="button"
+            className="user-pill"
+            onClick={() => {
+              if (studentUser) {
+                setStudentUser(null);
+                showMessage('You have been logged out.', 'info');
+                navigate('/login');
+                return;
+              }
+              navigate('/login');
+            }}
+          >
             <span className="user-avatar">{(studentUser?.name || 'G').charAt(0).toUpperCase()}</span>
             <span className="user-label">{studentUser ? studentUser.name : 'Login'}</span>
             <ArrowRightIcon className="user-arrow" />

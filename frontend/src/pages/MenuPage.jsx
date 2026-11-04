@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import menuItems from '../data/menu';
 
 const categories = ['All', 'Appetizers', 'Main Course', 'Desserts', 'Beverages', 'Specials'];
 
@@ -21,14 +20,15 @@ const getItemCategory = (item) => {
   return 'Specials';
 };
 
-function MenuPage({ navigate, addToCart }) {
+function MenuPage({ navigate, addToCart, menuItems = [] }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showFilters, setShowFilters] = useState(true);
 
   const filteredItems = useMemo(() => {
+    if (!menuItems.length) return [];
     if (selectedCategory === 'All') return menuItems;
     return menuItems.filter((item) => getItemCategory(item) === selectedCategory);
-  }, [selectedCategory]);
+  }, [menuItems, selectedCategory]);
 
   return (
     <div className="menu-page-shell">

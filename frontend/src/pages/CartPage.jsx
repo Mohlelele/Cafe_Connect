@@ -1,5 +1,5 @@
-function CartPage({ cart, navigate, updateCartItem }) {
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+function CartPage({ cart, navigate, updateCartItem, onCheckout, studentUser }) {
+  const total = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
 
   return (
     <div className="cart-page">
@@ -22,7 +22,7 @@ function CartPage({ cart, navigate, updateCartItem }) {
                   <img src={item.image} alt={item.name} className="cart-item-image" />
                   <div className="cart-item-copy">
                     <div className="cart-item-name">{item.name}</div>
-                    <div className="cart-item-price">R {item.price.toFixed(2)}</div>
+                    <div className="cart-item-price">R {Number(item.price || 0).toFixed(2)}</div>
                   </div>
 
                   <div className="cart-controls">
@@ -41,11 +41,37 @@ function CartPage({ cart, navigate, updateCartItem }) {
               </div>
 
               <div className="total-row total-row-main">
-                <span>Total payable at counter</span>
+                <span>Total payable</span>
                 <strong>R {total.toFixed(2)}</strong>
               </div>
 
-              <button type="button" className="primary-btn full-width" onClick={() => navigate('/orders')}>
+              <div className="cart-payment-row">
+                <label htmlFor="paymentMethod">Payment method</label>
+                <select id="paymentMethod" defaultValue="Cash" className="status-select">
+                  <option value="Cash">Pay at cafeteria</option>
+                  <option value="Card">Debit/Credit card</option>
+                  <option value="EFT">EFT</option>
+                  <option value="Instant EFT">Instant EFT</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                className="primary-btn full-width"
+                onClick={() => {
+                  const methodSelect = document.getElementById('paymentMethod');
+                  const method = methodSelect ? methodSelect.value : 'Cash';
+                  if (onCheckout) {
+                    onCheckout(method);
+                    return;
+                  }
+                  if (!studentUser) {
+                    navigate('/login');
+                    return;
+                  }
+                  navigate('/orders');
+                }}
+              >
                 Place order
               </button>
             </div>
