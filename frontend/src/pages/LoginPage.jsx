@@ -19,6 +19,9 @@ function LoginPage({ navigate, onLogin, showMessage }) {
         method: 'POST',
         body: JSON.stringify(form),
       });
+      if (payload.token) {
+        localStorage.setItem('cafe-connect-auth-token', payload.token);
+      }
       onLogin(payload.user, payload.token);
       showMessage(payload.message || 'Login successful.', 'success');
       navigate('/menu');

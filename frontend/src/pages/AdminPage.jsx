@@ -108,6 +108,9 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
         method: 'POST',
         body: JSON.stringify(loginForm),
       });
+      if (payload.token) {
+        localStorage.setItem('cafe-connect-auth-token', payload.token);
+      }
       setAdminUser(payload.admin, payload.token);
       showMessage(payload.message || 'Admin login successful.', 'success');
       navigate('/admin');

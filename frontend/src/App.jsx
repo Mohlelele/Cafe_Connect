@@ -150,12 +150,18 @@ function App() {
     setStudentUser(user);
     setAdminUser(null);
     setAuthToken(token);
+    if (token) {
+      localStorage.setItem(STORAGE_KEYS.token, token);
+    }
   };
 
   const handleAdminLogin = (user, token = '') => {
     setAdminUser(user);
     setStudentUser(null);
     setAuthToken(token);
+    if (token) {
+      localStorage.setItem(STORAGE_KEYS.token, token);
+    }
   };
 
   const logoutStudent = () => {
