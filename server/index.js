@@ -4,6 +4,12 @@ const db = require('./db');
 
 const app = express();
 const port = process.env.PORT || 5000;
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://cafe-connect-51tz.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
 
 const demoUsers = [];
 const demoMenu = [
@@ -44,7 +50,19 @@ const demoMenu = [
 const demoOrders = [];
 let isDbConnected = false;
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 const normalizeMenuItem = (item) => ({
