@@ -123,12 +123,21 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
 
   const handleAdminLogin = async (event) => {
     event.preventDefault();
+
+    const email = String(loginForm.email || '').trim();
+    const password = String(loginForm.password || '').trim();
+
+    if (!email || !password) {
+      showMessage('Please enter the admin email and password.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const payload = await apiRequest('/api/admin/login', {
         method: 'POST',
-        body: JSON.stringify(loginForm),
+        body: JSON.stringify({ email, password }),
       });
       if (payload.token) {
         localStorage.setItem('cafe-connect-auth-token', payload.token);
@@ -137,7 +146,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
       showMessage(payload.message || 'Admin login successful.', 'success');
       navigate('/admin');
     } catch (error) {
-      showMessage(error.message || 'Admin login failed.', 'error');
+      showMessage(error.message || 'Invalid admin email or password.', 'error');
     } finally {
       setIsSubmitting(false);
     }

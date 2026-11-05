@@ -1,8 +1,17 @@
 const express = require('express');
 const crypto = require('crypto');
 const cors = require('cors');
+require('dotenv').config();
+const sgMail = require('@sendgrid/mail');
 const connectDB = require('./db');
 const { hashPassword, verifyPassword } = require('./auth');
+
+const sendgridApiKey = process.env.SENDGRID_API_KEY;
+const sendgridFromEmail = process.env.SENDGRID_FROM_EMAIL || 'no-reply@cafeconnect.com';
+
+if (sendgridApiKey) {
+  sgMail.setApiKey(sendgridApiKey);
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -52,18 +61,18 @@ const demoUsers = [
 ];
 
 const demoMenu = [
-  { id: 1, item_name: 'Chicken Burger', description: 'Grilled chicken burger with lettuce, tomato, and a special sauce.', price: 85, availability: true, image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80' },
-  { id: 2, item_name: 'Cheese Pizza', description: 'Freshly baked pizza topped with cheese and tomato sauce.', price: 95, availability: true, image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80' },
-  { id: 3, item_name: 'Rice and Curry', description: 'Traditional rice and curry meal served hot and fresh.', price: 70, availability: true, image_url: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80' },
-  { id: 4, item_name: 'Fruit Smoothie', description: 'Fresh fruit smoothie for a light and energising boost.', price: 45, availability: true, image_url: 'https://images.unsplash.com/photo-1546173159-315724a31696?auto=format&fit=crop&w=900&q=80' },
-  { id: 5, item_name: 'Cappuccino', description: 'Creamy espresso-based cappuccino topped with velvety foam.', price: 35, availability: true, image_url: 'https://images.unsplash.com/photo-1497636577773-f1231844b336?auto=format&fit=crop&w=900&q=80' },
-  { id: 6, item_name: 'Iced Latte', description: 'Smooth iced latte with a hint of vanilla sweetness.', price: 38, availability: true, image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80' },
-  { id: 7, item_name: 'Mango Juice', description: 'Cold mango juice bursting with tropical flavour.', price: 28, availability: true, image_url: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?auto=format&fit=crop&w=900&q=80' },
-  { id: 8, item_name: 'Chicken Wrap', description: 'A tender grilled chicken wrap with crunchy salad and sauce.', price: 60, availability: true, image_url: 'https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=900&q=80' },
-  { id: 9, item_name: 'Veggie Pasta', description: 'Creamy veggie pasta with roasted vegetables and herbs.', price: 78, availability: true, image_url: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=900&q=80' },
-  { id: 10, item_name: 'Choc Chip Muffin', description: 'Warm muffin packed with rich chocolate chips.', price: 25, availability: true, image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80' },
-  { id: 11, item_name: 'Masala Tea', description: 'A fragrant, comforting masala tea served hot.', price: 20, availability: true, image_url: 'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=900&q=80' },
-  { id: 12, item_name: 'Breakfast Combo', description: 'Eggs, toast, grilled tomato, and a fresh side salad.', price: 72, availability: true, image_url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=900&q=80' },
+  { id: 1, item_name: 'Vanilla Scoop', description: 'Classic vanilla bean scoop with a creamy finish.', price: 18, availability: true, image_url: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=900&q=80' },
+  { id: 2, item_name: 'Strawberry Swirl', description: 'Fresh strawberry flavour with a smooth and fruity taste.', price: 17, availability: true, image_url: 'https://images.unsplash.com/photo-1570197788417-0e823ef4b269?auto=format&fit=crop&w=900&q=80' },
+  { id: 3, item_name: 'Chocolate Fudge', description: 'Rich chocolate ice cream topped with silky fudge.', price: 20, availability: true, image_url: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=900&q=80' },
+  { id: 4, item_name: 'Mint Delight', description: 'Cool mint ice cream with a refreshing finish.', price: 16, availability: true, image_url: 'https://images.unsplash.com/photo-1576708829420-7dd43d3cff5d?auto=format&fit=crop&w=900&q=80' },
+  { id: 5, item_name: 'Coconut Crunch', description: 'Creamy coconut scoop with toasted crunch pieces.', price: 19, availability: true, image_url: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=900&q=80' },
+  { id: 6, item_name: 'Caramel Cone', description: 'Smooth caramel ice cream served in a crisp cone.', price: 18, availability: true, image_url: 'https://images.unsplash.com/photo-1525059696034-4967a729002e?auto=format&fit=crop&w=900&q=80' },
+  { id: 7, item_name: 'Berry Blast', description: 'Mixed berry flavour with a sweet, juicy finish.', price: 15, availability: true, image_url: 'https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&w=900&q=80' },
+  { id: 8, item_name: 'Cookie Sundae', description: 'Ice cream layered with cookie pieces and sauce.', price: 20, availability: true, image_url: 'https://images.unsplash.com/photo-1560008581-09826d1de69f?auto=format&fit=crop&w=900&q=80' },
+  { id: 9, item_name: 'Peanut Butter Cup', description: 'Creamy peanut butter ice cream with chocolate bites.', price: 19, availability: true, image_url: 'https://images.unsplash.com/photo-1582716401301-b2407dc7563d?auto=format&fit=crop&w=900&q=80' },
+  { id: 10, item_name: 'Bubblegum Pop', description: 'Fun, sweet bubblegum flavour for a playful treat.', price: 15, availability: true, image_url: 'https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?auto=format&fit=crop&w=900&q=80' },
+  { id: 11, item_name: 'Coffee Cream', description: 'Smooth coffee ice cream with a rich creamy finish.', price: 18, availability: true, image_url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80' },
+  { id: 12, item_name: 'Mango Chill', description: 'Fresh mango ice cream with a tropical, sunny taste.', price: 17, availability: true, image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const demoOrders = [];
@@ -124,6 +133,37 @@ const requireSession = (requiredRole) => (req, res, next) => {
 };
 
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+
+const sendPasswordResetOtpEmail = async (email, otp) => {
+  if (!sendgridApiKey) {
+    return {
+      delivered: false,
+      configured: false,
+      message: 'Email delivery is not configured. Showing the OTP in-app for this demo setup.',
+      otp,
+    };
+  }
+
+  try {
+    await sgMail.send({
+      to: email,
+      from: sendgridFromEmail,
+      subject: 'Cafe Connect password reset code',
+      text: `Your Cafe Connect password reset code is ${otp}. It expires in 10 minutes.`,
+      html: `<p>Your Cafe Connect password reset code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    });
+
+    return { delivered: true, configured: true, message: 'Password reset code sent successfully.', otp };
+  } catch (error) {
+    console.error('SendGrid email failed:', error.message);
+    return {
+      delivered: false,
+      configured: true,
+      message: 'The email provider could not deliver the reset code. Showing the OTP in-app for this demo setup.',
+      otp,
+    };
+  }
+};
 
 const matchPassword = async (inputPassword, storedPassword) => {
   if (!storedPassword) return false;
@@ -328,27 +368,23 @@ app.post('/api/forgot-password/request', async (req, res) => {
       return res.status(404).json({ message: 'No account found for that email.' });
     }
 
-    const otp = generateOtp();
-    passwordResetCodes.set(safeEmail, { otp, expiresAt: Date.now() + 10 * 60 * 1000 });
-
     return res.json({
-      message: 'A 6-digit OTP has been sent to your email. Use it to reset your password.',
-      otp,
+      message: 'You can now set a new password for this account.',
+      resetReady: true,
     });
   } catch (error) {
-    console.error('OTP request failed:', error.message);
-    return res.status(500).json({ message: 'Unable to send OTP.' });
+    console.error('Password reset request failed:', error.message);
+    return res.status(500).json({ message: 'Unable to continue with password reset.' });
   }
 });
 
 app.post('/api/forgot-password', async (req, res) => {
-  const { email, otp, newPassword, password } = req.body;
+  const { email, newPassword, password } = req.body;
   const safeEmail = String(email || '').trim().toLowerCase();
-  const safeOtp = String(otp || '').trim();
   const safePassword = String(newPassword || password || '').trim();
 
-  if (!safeEmail || !safeOtp || !safePassword) {
-    return res.status(400).json({ message: 'Email, OTP and a new password are required.' });
+  if (!safeEmail || !safePassword) {
+    return res.status(400).json({ message: 'Email and a new password are required.' });
   }
 
   try {
@@ -357,22 +393,7 @@ app.post('/api/forgot-password', async (req, res) => {
       return res.status(404).json({ message: 'No account found for that email.' });
     }
 
-    const resetRequest = passwordResetCodes.get(safeEmail);
-    if (!resetRequest) {
-      return res.status(400).json({ message: 'No active reset code found for this email. Please request a new OTP.' });
-    }
-
-    if (Date.now() > resetRequest.expiresAt) {
-      passwordResetCodes.delete(safeEmail);
-      return res.status(400).json({ message: 'Your OTP has expired. Please request a new one.' });
-    }
-
-    if (resetRequest.otp !== safeOtp) {
-      return res.status(400).json({ message: 'The OTP is incorrect. Please try again.' });
-    }
-
     student.password = await hashPassword(safePassword);
-    passwordResetCodes.delete(safeEmail);
     return res.json({ message: 'Password reset successful. Please log in with your new password.' });
   } catch (error) {
     console.error('Forgot password failed:', error.message);

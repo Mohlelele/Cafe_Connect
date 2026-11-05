@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { apiRequest } from '../api';
 
 function ForgotPasswordPage({ navigate, showMessage }) {
-  const [form, setForm] = useState({ email: '', otp: '', newPassword: '' });
+  const [form, setForm] = useState({ email: '', newPassword: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -13,7 +12,7 @@ function ForgotPasswordPage({ navigate, showMessage }) {
 
   const handleRequestOtp = async () => {
     if (!form.email.trim()) {
-      showMessage('Please enter your email before requesting an OTP.', 'error');
+      showMessage('Please enter your email before continuing.', 'error');
       return;
     }
 
@@ -22,18 +21,17 @@ function ForgotPasswordPage({ navigate, showMessage }) {
         method: 'POST',
         body: JSON.stringify({ email: form.email }),
       });
-      setOtpSent(true);
-      showMessage(payload.message || 'OTP sent.', 'success');
+      showMessage(payload.message || 'You can now set a new password for this account.', 'success');
     } catch (error) {
-      showMessage(error.message || 'Could not send OTP.', 'error');
+      showMessage(error.message || 'Could not continue with password reset.', 'error');
     }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!form.email.trim() || !form.otp.trim() || !form.newPassword.trim()) {
-      showMessage('Please provide your email, OTP, and new password.', 'error');
+    if (!form.email.trim() || !form.newPassword.trim()) {
+      showMessage('Please provide your email and a new password.', 'error');
       return;
     }
 
@@ -54,7 +52,7 @@ function ForgotPasswordPage({ navigate, showMessage }) {
   };
 
   const canRequestOtp = form.email.trim().length > 0 && !isSubmitting;
-  const canSubmitReset = otpSent && form.otp.trim().length > 0 && form.newPassword.trim().length > 0 && !isSubmitting;
+  const canSubmitReset = form.email.trim().length > 0 && form.newPassword.trim().length > 0 && !isSubmitting;
 
   return (
     <div className="auth-page">
@@ -67,13 +65,8 @@ function ForgotPasswordPage({ navigate, showMessage }) {
           </label>
 
           <button type="button" className="secondary-btn" onClick={handleRequestOtp} disabled={!canRequestOtp}>
-            Send OTP
+            Check account
           </button>
-
-          <label className="form-field">
-            OTP code
-            <input className="form-input" type="text" name="otp" inputMode="numeric" maxLength="6" placeholder="Enter 6-digit code" value={form.otp} onChange={handleChange} />
-          </label>
 
           <label className="form-field">
             New password

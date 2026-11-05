@@ -12,18 +12,38 @@ function RegisterPage({ navigate, onRegister, showMessage }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const password = form.password.trim();
+
+    if (!name || !email || !password) {
+      showMessage('Please fill in your name, email, and password.', 'error');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showMessage('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      showMessage('Password must be at least 6 characters long.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const payload = await apiRequest('/api/register', {
         method: 'POST',
-        body: JSON.stringify(form),
+        body: JSON.stringify({ name, email, password }),
       });
       onRegister(payload.student, payload.token || '');
       showMessage(payload.message || 'Account created successfully.', 'success');
       navigate('/login');
     } catch (error) {
-      showMessage(error.message || 'Registration failed.', 'error');
+      showMessage(error.message || 'Registration failed. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }

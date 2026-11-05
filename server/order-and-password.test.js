@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { app, demoUsers, demoOrders, createSession } = require('./index.js');
+const { app, demoUsers, demoOrders, passwordResetCodes, createSession } = require('./index.js');
 const { hashPassword, verifyPassword } = require('./auth');
 
 function makeRequest(path, { method = 'GET', body, headers = {} } = {}) {
@@ -86,7 +86,7 @@ test('student can fetch their own orders from the authenticated session', async 
   assert.equal(response.json.some((entry) => entry.id === order.id), true);
 });
 
-test('forgot password sends an otp and resets only after verification', async () => {
+test('forgot password can reset directly without an otp code', async () => {
   const email = `resetstudent${Date.now()}@example.com`;
   const user = {
     id: Date.now(),
@@ -97,17 +97,17 @@ test('forgot password sends an otp and resets only after verification', async ()
 
   demoUsers.push(user);
 
-  const otpRequest = await makeRequest('/api/forgot-password/request', {
+  const requestResponse = await makeRequest('/api/forgot-password/request', {
     method: 'POST',
     body: JSON.stringify({ email }),
   });
 
-  assert.equal(otpRequest.statusCode, 200);
-  assert.equal(typeof otpRequest.json.otp === 'string', true);
+  assert.equal(requestResponse.statusCode, 200);
+  assert.equal(requestResponse.json.message.includes('You can now set a new password') || requestResponse.json.message.includes('Reset your password'), true);
 
   const resetResponse = await makeRequest('/api/forgot-password', {
     method: 'POST',
-    body: JSON.stringify({ email, otp: otpRequest.json.otp, newPassword: 'NewPassword456!' }),
+    body: JSON.stringify({ email, newPassword: 'NewPassword456!' }),
   });
 
   const updatedUser = demoUsers.find((entry) => entry.email === email);

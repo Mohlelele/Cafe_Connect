@@ -310,35 +310,18 @@ const demoResponseFor = (endpoint, options = {}) => {
       throw new Error('No account found for that email.');
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const resetData = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
-    const saved = JSON.parse(window.localStorage.getItem('cafe-connect-reset-codes') || '{}');
-    saved[email] = resetData;
-    window.localStorage.setItem('cafe-connect-reset-codes', JSON.stringify(saved));
-
     return {
-      message: 'A 6-digit OTP has been sent to your email. Use it to reset your password.',
-      otp,
+      message: 'You can now set a new password for this account.',
+      resetReady: true,
     };
   }
 
   if (endpoint === '/api/forgot-password') {
     const email = String(data.email || '').trim().toLowerCase();
-    const otp = String(data.otp || '').trim();
     const password = String(data.newPassword || data.password || '').trim();
 
-    if (!email || !otp || !password) {
-      throw new Error('Email, OTP and a new password are required.');
-    }
-
-    const saved = JSON.parse(window.localStorage.getItem('cafe-connect-reset-codes') || '{}');
-    const resetCode = saved[email];
-    if (!resetCode || !resetCode.otp || resetCode.expiresAt < Date.now()) {
-      throw new Error('Your OTP has expired or is invalid. Please request a new one.');
-    }
-
-    if (resetCode.otp !== otp) {
-      throw new Error('The OTP is incorrect. Please try again.');
+    if (!email || !password) {
+      throw new Error('Email and a new password are required.');
     }
 
     const users = getAllDemoUsers();
@@ -348,8 +331,6 @@ const demoResponseFor = (endpoint, options = {}) => {
     }
 
     user.password = password;
-    delete saved[email];
-    window.localStorage.setItem('cafe-connect-reset-codes', JSON.stringify(saved));
     saveDemoUsers(users);
     return { message: 'Password reset successful. Please log in with your new password.' };
   }

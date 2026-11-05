@@ -12,12 +12,31 @@ function LoginPage({ navigate, onLogin, showMessage }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const email = form.email.trim();
+    const password = form.password.trim();
+
+    if (!email || !password) {
+      showMessage('Please enter both your email and password.', 'error');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showMessage('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      showMessage('Password must be at least 6 characters long.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const payload = await apiRequest('/api/login', {
         method: 'POST',
-        body: JSON.stringify(form),
+        body: JSON.stringify({ email, password }),
       });
       if (payload.token) {
         localStorage.setItem('cafe-connect-auth-token', payload.token);
@@ -26,7 +45,7 @@ function LoginPage({ navigate, onLogin, showMessage }) {
       showMessage(payload.message || 'Login successful.', 'success');
       navigate('/menu');
     } catch (error) {
-      showMessage(error.message || 'Login failed.', 'error');
+      showMessage(error.message || 'Invalid email or password.', 'error');
     } finally {
       setIsSubmitting(false);
     }
