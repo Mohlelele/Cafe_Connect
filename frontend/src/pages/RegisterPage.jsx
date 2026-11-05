@@ -49,6 +49,8 @@ function RegisterPage({ navigate, onRegister, showMessage }) {
             <input className="form-input" type="password" name="password" placeholder="Create a password" value={form.password} onChange={handleChange} required />
           </label>
 
+          <p className="helper-text">Password is case sensitive.</p>
+
           <button type="submit" className="primary-btn" disabled={isSubmitting}>
             {isSubmitting ? 'Registering...' : 'Register'}
           </button>

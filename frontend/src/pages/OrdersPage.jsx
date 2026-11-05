@@ -6,6 +6,13 @@ function OrdersPage({ navigate, orders = [], studentUser }) {
     return order.customer === studentUser.name || !order.customer;
   });
 
+  const getStatusClass = (status) => {
+    const normalized = String(status || 'Pending').toLowerCase();
+    if (normalized.includes('ready')) return 'status-pill ready';
+    if (normalized.includes('prep')) return 'status-pill prep';
+    return 'status-pill pending';
+  };
+
   return (
     <div className="orders-page">
       <div className="orders-header">
@@ -34,7 +41,7 @@ function OrdersPage({ navigate, orders = [], studentUser }) {
                   <span className="customer-name">{order.customer}</span>
                 </div>
 
-                <span className="status-pill ready">{order.status}</span>
+                <span className={getStatusClass(order.status)}>{order.status}</span>
               </div>
 
               <div className="order-items-compact">

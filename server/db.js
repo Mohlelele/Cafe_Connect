@@ -1,23 +1,15 @@
-const mysql = require('mysql2');
-const dotenv = require('dotenv');
-const fs = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
+require('dotenv').config();
 
-dotenv.config();
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI);
 
-const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'cafe_connect',
+        console.log('MongoDB connected successfully!');
+    } catch (error) {
+        console.error('MongoDB connection failed:', error.message);
+        process.exit(1);
+    }
+};
 
-    ssl: process.env.DB_SSL === 'false' ? undefined : {
-        ca: fs.readFileSync(path.join(__dirname, 'ca.pem')),
-        rejectUnauthorized: true
-    },
-
-    connectTimeout: 20000
-});
-
-module.exports = db;
+module.exports = connectDB;

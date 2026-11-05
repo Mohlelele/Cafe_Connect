@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BellIcon, ClockIcon, LogoIcon, MenuIcon, ArrowRightIcon } from './components/Icons';
 import menuItemsData from './data/menu';
 import { apiRequest } from './api';
@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import MenuPage from './pages/MenuPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminPage from './pages/AdminPage';
@@ -21,7 +22,14 @@ const STORAGE_KEYS = {
 
 function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
-  const [menuItems, setMenuItems] = useState(menuItemsData);
+  const [menuItems, setMenuItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cafe-connect-menu');
+      return saved ? JSON.parse(saved) : menuItemsData;
+    } catch {
+      return menuItemsData;
+    }
+  });
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('cafe-connect-cart');
@@ -64,6 +72,33 @@ function App() {
   const [flashMessage, setFlashMessage] = useState({ message: '', tone: 'success' });
   const isAdminView = currentPath.startsWith('/admin');
 
+  const fetchStudentOrders = useCallback(async () => {
+    if (!studentUser) {
+      setOrders([]);
+      return;
+    }
+
+    try {
+      const response = await apiRequest('/api/orders');
+      const nextOrders = Array.isArray(response) ? response : [];
+
+      setOrders(nextOrders.map((order) => ({
+        id: order.orderNumber || order.id,
+        time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now',
+        customer: order.customerName || studentUser.name,
+        status: order.status || 'Pending',
+        items: (order.items || []).map((entry) => ({
+          label: `${Number(entry.quantity || 1)}x ${entry.name || entry.item_name || 'Item'}`,
+          price: Number(entry.price || 0) * Number(entry.quantity || 1),
+        })),
+        total: Number(order.totalAmount || 0),
+        payment: order.paymentMethod || 'Cash',
+      })));
+    } catch {
+      setOrders([]);
+    }
+  }, [studentUser]);
+
   useEffect(() => {
     const handleLocationChange = () => setCurrentPath(window.location.pathname || '/');
     window.addEventListener('popstate', handleLocationChange);
@@ -74,6 +109,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('cafe-connect-cart', JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('cafe-connect-menu', JSON.stringify(menuItems));
+  }, [menuItems]);
 
   useEffect(() => {
     localStorage.setItem('cafe-connect-orders', JSON.stringify(orders));
@@ -91,10 +130,13 @@ function App() {
             available: item.availability ?? true,
             image: item.image_url || item.image || '',
           })));
+          return;
         }
       } catch {
-        setMenuItems(menuItemsData);
+        // fall back to the local catalog if the API is unavailable or empty
       }
+
+      setMenuItems(menuItemsData);
     };
 
     loadMenu();
@@ -132,6 +174,19 @@ function App() {
       navigate('/admin');
     }
   }, [studentUser, adminUser, currentPath]);
+
+  useEffect(() => {
+    if (!studentUser) {
+      return undefined;
+    }
+
+    fetchStudentOrders();
+    const intervalId = window.setInterval(() => {
+      fetchStudentOrders();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [studentUser, currentPath, fetchStudentOrders]);
 
   useEffect(() => {
     if (!flashMessage.message) {
@@ -192,12 +247,29 @@ function App() {
   };
 
   const updateCartItem = (id, delta) => {
+    let message = 'Cart updated.';
     setCart((current) => {
       const next = current
-        .map((entry) =>
-          entry.id === id ? { ...entry, quantity: Math.max(0, entry.quantity + delta) } : entry
-        )
+        .map((entry) => {
+          if (entry.id !== id) return entry;
+          const updated = { ...entry, quantity: Math.max(0, entry.quantity + delta) };
+          if (updated.quantity === 0) {
+            message = `${entry.name} removed from cart.`;
+          } else if (delta > 0) {
+            message = `${entry.name} quantity increased.`;
+          } else {
+            message = `${entry.name} quantity decreased.`;
+          }
+          return updated;
+        })
         .filter((entry) => entry.quantity > 0);
+
+      if (next.length !== current.length) {
+        showMessage(message, next.length === 0 ? 'info' : 'success');
+      } else {
+        showMessage(message, 'success');
+      }
+
       return next;
     });
   };
@@ -226,18 +298,8 @@ function App() {
       });
 
       const orderNumber = payload.orderNumber || `CC-${Date.now()}`;
-      const newOrder = {
-        id: orderNumber,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        customer: studentUser.name,
-        status: 'Pending',
-        items: cart.map((entry) => ({ label: `${entry.quantity}x ${entry.name}`, price: Number(entry.price || 0) * Number(entry.quantity || 1) })),
-        total: Number(payload.totalAmount || cart.reduce((sum, entry) => sum + Number(entry.price || 0) * Number(entry.quantity || 1), 0)),
-        payment: paymentMethod,
-      };
-
-      setOrders((current) => [newOrder, ...current]);
       setCart([]);
+      await fetchStudentOrders();
       showMessage(`Order ${orderNumber} placed successfully.`, 'success');
       navigate('/orders');
     } catch (error) {
@@ -273,13 +335,14 @@ function App() {
     if (currentPath === '/cart') return <CartPage cart={cart} navigate={navigate} updateCartItem={updateCartItem} onCheckout={placeOrder} studentUser={studentUser} />;
     if (currentPath === '/login') return <LoginPage navigate={navigate} onLogin={handleStudentLogin} showMessage={showMessage} />;
     if (currentPath === '/register') return <RegisterPage navigate={navigate} onRegister={() => {}} showMessage={showMessage} />;
-    if (currentPath === '/admin-login') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} />;
-    if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} />;
+    if (currentPath === '/forgot-password') return <ForgotPasswordPage navigate={navigate} showMessage={showMessage} />;
+    if (currentPath === '/admin-login') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} />;
+    if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} />;
     return <HomePage navigate={navigate} menuItems={menuItems} addToCart={addToCart} />;
   };
 
   const renderHeader = () => {
-    if (['/', '/login', '/register', '/admin-login'].includes(currentPath) && !studentUser && !adminUser) {
+    if (['/', '/login', '/register', '/forgot-password', '/admin-login'].includes(currentPath) && !studentUser && !adminUser) {
       return null;
     }
 

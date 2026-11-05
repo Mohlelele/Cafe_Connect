@@ -1,66 +1,83 @@
 const express = require('express');
 const crypto = require('crypto');
 const cors = require('cors');
-const db = require('./db');
+const connectDB = require('./db');
 const { hashPassword, verifyPassword } = require('./auth');
 
 const app = express();
 const port = process.env.PORT || 5000;
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://cafe-connect-liard.vercel.app',
+  'https://cafe-connect-awy2jfx9v-mathapelo.vercel.app',
   'https://cafe-connect-51tz.vercel.app',
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
 ].filter(Boolean);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+
+  const normalizedOrigin = origin.toLowerCase();
+  if (allowedOrigins.some((allowed) => allowed && allowed.toLowerCase() === normalizedOrigin)) {
+    return true;
+  }
+
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
+    || /^https?:\/\/.*\.vercel\.app$/i.test(origin)
+    || /^https?:\/\/.*\.vercel\.app\/.*$/i.test(origin);
+};
 
 const DEFAULT_ADMIN_EMAIL = 'admin@cafeconnect.com';
 const DEFAULT_ADMIN_PASSWORD = 'admin123';
-const demoUsers = [];
-const activeSessions = new Map();
-const demoMenu = [
+const DEFAULT_STUDENT_EMAIL = 'mathapelo@cafeconnect.com';
+const DEFAULT_STUDENT_PASSWORD = 'student123';
+
+const demoUsers = [
   {
     id: 1,
-    item_name: 'Chicken Burger',
-    description: 'Grilled chicken burger with lettuce, tomato, and a special sauce.',
-    price: 220,
-    availability: true,
-    image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80',
+    name: 'Mathapelo Mokoena',
+    email: DEFAULT_STUDENT_EMAIL,
+    password: DEFAULT_STUDENT_PASSWORD,
   },
   {
-    id: 2,
-    item_name: 'Cheese Pizza',
-    description: 'Freshly baked pizza topped with cheese and tomato sauce.',
-    price: 260,
-    availability: true,
-    image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 3,
-    item_name: 'Rice and Curry',
-    description: 'Traditional rice and curry meal served hot and fresh.',
-    price: 180,
-    availability: true,
-    image_url: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 4,
-    item_name: 'Fruit Smoothie',
-    description: 'A smooth mix of fruits for a healthy and refreshing drink.',
-    price: 150,
-    availability: true,
-    image_url: 'https://images.unsplash.com/photo-1546173159-315724a31696?auto=format&fit=crop&w=900&q=80',
+    id: 99,
+    name: 'Cafe Connect Admin',
+    email: DEFAULT_ADMIN_EMAIL,
+    password: DEFAULT_ADMIN_PASSWORD,
   },
 ];
+
+const demoMenu = [
+  { id: 1, item_name: 'Chicken Burger', description: 'Grilled chicken burger with lettuce, tomato, and a special sauce.', price: 85, availability: true, image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80' },
+  { id: 2, item_name: 'Cheese Pizza', description: 'Freshly baked pizza topped with cheese and tomato sauce.', price: 95, availability: true, image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80' },
+  { id: 3, item_name: 'Rice and Curry', description: 'Traditional rice and curry meal served hot and fresh.', price: 70, availability: true, image_url: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80' },
+  { id: 4, item_name: 'Fruit Smoothie', description: 'Fresh fruit smoothie for a light and energising boost.', price: 45, availability: true, image_url: 'https://images.unsplash.com/photo-1546173159-315724a31696?auto=format&fit=crop&w=900&q=80' },
+  { id: 5, item_name: 'Cappuccino', description: 'Creamy espresso-based cappuccino topped with velvety foam.', price: 35, availability: true, image_url: 'https://images.unsplash.com/photo-1497636577773-f1231844b336?auto=format&fit=crop&w=900&q=80' },
+  { id: 6, item_name: 'Iced Latte', description: 'Smooth iced latte with a hint of vanilla sweetness.', price: 38, availability: true, image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80' },
+  { id: 7, item_name: 'Mango Juice', description: 'Cold mango juice bursting with tropical flavour.', price: 28, availability: true, image_url: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?auto=format&fit=crop&w=900&q=80' },
+  { id: 8, item_name: 'Chicken Wrap', description: 'A tender grilled chicken wrap with crunchy salad and sauce.', price: 60, availability: true, image_url: 'https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=900&q=80' },
+  { id: 9, item_name: 'Veggie Pasta', description: 'Creamy veggie pasta with roasted vegetables and herbs.', price: 78, availability: true, image_url: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=900&q=80' },
+  { id: 10, item_name: 'Choc Chip Muffin', description: 'Warm muffin packed with rich chocolate chips.', price: 25, availability: true, image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80' },
+  { id: 11, item_name: 'Masala Tea', description: 'A fragrant, comforting masala tea served hot.', price: 20, availability: true, image_url: 'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=900&q=80' },
+  { id: 12, item_name: 'Breakfast Combo', description: 'Eggs, toast, grilled tomato, and a fresh side salad.', price: 72, availability: true, image_url: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=900&q=80' },
+];
+
 const demoOrders = [];
+const activeSessions = new Map();
+const passwordResetCodes = new Map();
 let isDbConnected = false;
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
+    if (isAllowedOrigin(origin)) {
+      callback(null, origin || true);
       return;
     }
-    callback(new Error('Not allowed by CORS'));
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -69,7 +86,7 @@ app.use(cors({
 app.use(express.json());
 
 const normalizeMenuItem = (item) => ({
-  id: item.menu_item_id || item.id,
+  id: item.id,
   item_name: item.item_name || item.name,
   name: item.item_name || item.name,
   description: item.description || '',
@@ -80,7 +97,7 @@ const normalizeMenuItem = (item) => ({
 });
 
 const normalizeUser = (user) => ({
-  id: user.student_id || user.id,
+  id: user.id,
   name: user.name,
   email: user.email,
 });
@@ -89,7 +106,7 @@ const respondWithMenu = (items = []) => items.map(normalizeMenuItem);
 
 const createSession = (role, user) => {
   const token = crypto.randomBytes(24).toString('hex');
-  activeSessions.set(token, { role, userId: user.id, email: user.email });
+  activeSessions.set(token, { role, userId: user.id, email: user.email, name: user.name });
   return token;
 };
 
@@ -106,12 +123,14 @@ const requireSession = (requiredRole) => (req, res, next) => {
   return next();
 };
 
+const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+
 const matchPassword = async (inputPassword, storedPassword) => {
   if (!storedPassword) return false;
   if (typeof storedPassword === 'string' && storedPassword.startsWith('$2')) {
     return verifyPassword(inputPassword, storedPassword);
   }
-  return inputPassword === storedPassword;
+  return String(inputPassword) === String(storedPassword);
 };
 
 app.get('/', (req, res) => {
@@ -120,11 +139,7 @@ app.get('/', (req, res) => {
 
 app.get('/api/menu', requireSession('student'), async (req, res) => {
   try {
-    if (!isDbConnected) {
-      return res.json(respondWithMenu(demoMenu));
-    }
-    const [rows] = await db.promise().query('SELECT * FROM menu_items ORDER BY menu_item_id DESC');
-    return res.json(respondWithMenu(rows));
+    return res.json(respondWithMenu(demoMenu));
   } catch (error) {
     console.error('Menu fetch failed:', error.message);
     return res.json(respondWithMenu(demoMenu));
@@ -142,26 +157,15 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
-    if (!isDbConnected) {
-      const existing = demoUsers.find((user) => user.email === safeEmail);
-      if (existing) {
-        return res.status(409).json({ message: 'User already exists.' });
-      }
-
-      const passwordHash = await hashPassword(safePassword);
-      const user = { id: Date.now(), name: safeName, email: safeEmail, password: passwordHash };
-      demoUsers.push(user);
-      return res.status(201).json({ message: 'Student registered successfully.', student: normalizeUser(user) });
-    }
-
-    const [existing] = await db.promise().query('SELECT * FROM students WHERE email = ?', [safeEmail]);
-    if (existing.length > 0) {
+    const existing = demoUsers.find((user) => user.email === safeEmail);
+    if (existing) {
       return res.status(409).json({ message: 'User already exists.' });
     }
 
     const passwordHash = await hashPassword(safePassword);
-    const [result] = await db.promise().query('INSERT INTO students (name, email, password) VALUES (?, ?, ?)', [safeName, safeEmail, passwordHash]);
-    return res.status(201).json({ message: 'Student registered successfully.', student: { id: result.insertId, name: safeName, email: safeEmail } });
+    const user = { id: Date.now(), name: safeName, email: safeEmail, password: passwordHash };
+    demoUsers.push(user);
+    return res.status(201).json({ message: 'Student registered successfully.', student: normalizeUser(user) });
   } catch (error) {
     console.error('Register failed:', error.message);
     return res.status(500).json({ message: 'Registration failed.' });
@@ -178,34 +182,18 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
-    if (!isDbConnected) {
-      const user = demoUsers.find((entry) => entry.email === safeEmail);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid email or password.' });
-      }
-
-      const valid = await matchPassword(safePassword, user.password);
-      if (!valid) {
-        return res.status(401).json({ message: 'Invalid email or password.' });
-      }
-
-      const token = createSession('student', user);
-      return res.json({ message: 'Login successful', token, user: { id: user.id, name: user.name, email: user.email } });
-    }
-
-    const [rows] = await db.promise().query('SELECT * FROM students WHERE email = ?', [safeEmail]);
-    if (rows.length === 0) {
+    const user = demoUsers.find((entry) => entry.email === safeEmail);
+    if (!user) {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
-    const user = rows[0];
     const valid = await matchPassword(safePassword, user.password);
     if (!valid) {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
-    const token = createSession('student', { id: user.student_id, name: user.name, email: user.email });
-    return res.json({ message: 'Login successful', token, user: { id: user.student_id, name: user.name, email: user.email } });
+    const token = createSession('student', user);
+    return res.json({ message: 'Login successful', token, user: { id: user.id, name: user.name, email: user.email } });
   } catch (error) {
     console.error('Login failed:', error.message);
     return res.status(500).json({ message: 'Login failed.' });
@@ -222,74 +210,68 @@ app.post('/api/admin/login', async (req, res) => {
   }
 
   try {
-    if (!isDbConnected) {
-      const admin = {
-        id: 1,
-        name: 'System Admin',
-        email: DEFAULT_ADMIN_EMAIL,
-        password: await hashPassword(DEFAULT_ADMIN_PASSWORD),
-      };
-
-      if (safeEmail !== admin.email) {
-        return res.status(401).json({ message: 'Invalid admin email or password.' });
-      }
-
-      const valid = await matchPassword(safePassword, admin.password);
-      if (!valid) {
-        return res.status(401).json({ message: 'Invalid admin email or password.' });
-      }
-
-      const token = createSession('admin', admin);
-      return res.json({ message: 'Admin login successful', token, admin: { id: admin.id, name: admin.name, email: admin.email } });
-    }
-
-    const [rows] = await db.promise().query('SELECT * FROM administrators WHERE email = ?', [safeEmail]);
-    if (rows.length === 0) {
+    const admin = demoUsers.find((entry) => entry.email === safeEmail && entry.email === DEFAULT_ADMIN_EMAIL);
+    if (!admin) {
       return res.status(401).json({ message: 'Invalid admin email or password.' });
     }
 
-    const admin = rows[0];
     const valid = await matchPassword(safePassword, admin.password);
     if (!valid) {
       return res.status(401).json({ message: 'Invalid admin email or password.' });
     }
 
-    const token = createSession('admin', { id: admin.admin_id, name: admin.name, email: admin.email });
-    return res.json({ message: 'Admin login successful', token, admin: { id: admin.admin_id, name: admin.name, email: admin.email } });
+    const token = createSession('admin', admin);
+    return res.json({ message: 'Admin login successful', token, admin: { id: admin.id, name: admin.name, email: admin.email } });
   } catch (error) {
     console.error('Admin login failed:', error.message);
     return res.status(500).json({ message: 'Admin login failed.' });
   }
 });
 
+app.get('/api/orders', requireSession('student'), async (req, res) => {
+  try {
+    const studentOrders = demoOrders.filter((order) => String(order.studentId) === String(req.session.userId));
+    return res.json(studentOrders.map((order) => ({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName || req.session.name,
+      studentId: order.studentId,
+      totalAmount: Number(order.totalAmount || 0),
+      paymentMethod: order.paymentMethod || 'Cash',
+      status: order.status || 'Pending',
+      items: order.items || [],
+      createdAt: order.createdAt || new Date(order.id).toISOString(),
+    })));
+  } catch (error) {
+    console.error('Student orders fetch failed:', error.message);
+    return res.status(500).json({ message: 'Could not load your orders.' });
+  }
+});
+
 app.post('/api/orders', requireSession('student'), async (req, res) => {
-  const { items, paymentMethod, customerName = 'Student', studentId = null } = req.body;
+  const { items, paymentMethod } = req.body;
   if (!items || items.length === 0) {
     return res.status(400).json({ message: 'Order must contain at least one item.' });
   }
 
   try {
+    const student = demoUsers.find((entry) => String(entry.id) === String(req.session.userId));
     const orderNumber = `CC-${Math.floor(1000 + Math.random() * 9000)}`;
-    const total = items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+    const totalAmount = items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+    const order = {
+      id: Date.now(),
+      orderNumber,
+      customerName: student?.name || req.session.name || 'Student',
+      studentId: Number(req.session.userId),
+      totalAmount,
+      paymentMethod: paymentMethod || 'Cash',
+      status: 'Pending',
+      items,
+      createdAt: new Date().toISOString(),
+    };
+    demoOrders.push(order);
 
-    if (!isDbConnected) {
-      const order = { id: Date.now(), orderNumber, customerName, totalAmount: total, paymentMethod, status: 'Pending', items };
-      demoOrders.push(order);
-      return res.status(201).json({ message: 'Order placed successfully.', orderNumber, totalAmount: total, paymentMethod, orderId: order.id });
-    }
-
-    const [orderResult] = await db.promise().query('INSERT INTO orders (student_id, total_amount, order_status, order_number) VALUES (?, ?, ?, ?)', [studentId || null, total, 'Pending', orderNumber]);
-    const orderId = orderResult.insertId;
-
-    for (const item of items) {
-      await db.promise().query(
-        'INSERT INTO order_items (order_id, menu_item_id, quantity, item_price, subtotal) VALUES (?, ?, ?, ?, ?)',
-        [orderId, item.id, Number(item.quantity || 1), Number(item.price || 0), Number(item.price || 0) * Number(item.quantity || 1)]
-      );
-    }
-
-    await db.promise().query('INSERT INTO payments (order_id, payment_method, payment_amount, payment_status) VALUES (?, ?, ?, ?)', [orderId, paymentMethod || 'Cash', total, 'Pending']);
-    return res.status(201).json({ message: 'Order placed successfully.', orderNumber, totalAmount: total, paymentMethod: paymentMethod || 'Cash', orderId });
+    return res.status(201).json({ message: 'Order placed successfully.', orderNumber, totalAmount, paymentMethod: order.paymentMethod, orderId: order.id });
   } catch (error) {
     console.error('Order creation failed:', error.message);
     return res.status(500).json({ message: 'Order creation failed.' });
@@ -298,12 +280,8 @@ app.post('/api/orders', requireSession('student'), async (req, res) => {
 
 app.get('/api/admin/students', requireSession('admin'), async (req, res) => {
   try {
-    if (!isDbConnected) {
-      return res.json(demoUsers.map((user) => ({ id: user.id, name: user.name, email: user.email })));
-    }
-
-    const [rows] = await db.promise().query('SELECT student_id AS id, name, email, registration_date FROM students ORDER BY student_id DESC');
-    return res.json(rows);
+    const students = demoUsers.filter((user) => user.email !== DEFAULT_ADMIN_EMAIL);
+    return res.json(students.map((user) => ({ id: user.id, name: user.name, email: user.email })));
   } catch (error) {
     console.error('Admin students fetch failed:', error.message);
     return res.status(500).json({ message: 'Could not load students.' });
@@ -321,29 +299,84 @@ app.post('/api/admin/students', requireSession('admin'), async (req, res) => {
   }
 
   try {
-    if (!isDbConnected) {
-      const existing = demoUsers.find((user) => user.email === safeEmail);
-      if (existing) {
-        return res.status(409).json({ message: 'Student already exists.' });
-      }
-
-      const passwordHash = await hashPassword(safePassword);
-      const user = { id: Date.now(), name: safeName, email: safeEmail, password: passwordHash };
-      demoUsers.push(user);
-      return res.status(201).json({ message: 'Student account created.', student: normalizeUser(user) });
-    }
-
-    const [existing] = await db.promise().query('SELECT * FROM students WHERE email = ?', [safeEmail]);
-    if (existing.length > 0) {
+    const existing = demoUsers.find((user) => user.email === safeEmail);
+    if (existing) {
       return res.status(409).json({ message: 'Student already exists.' });
     }
 
     const passwordHash = await hashPassword(safePassword);
-    const [result] = await db.promise().query('INSERT INTO students (name, email, password) VALUES (?, ?, ?)', [safeName, safeEmail, passwordHash]);
-    return res.status(201).json({ message: 'Student account created.', student: { id: result.insertId, name: safeName, email: safeEmail } });
+    const user = { id: Date.now(), name: safeName, email: safeEmail, password: passwordHash };
+    demoUsers.push(user);
+    return res.status(201).json({ message: 'Student account created.', student: normalizeUser(user) });
   } catch (error) {
     console.error('Admin student creation failed:', error.message);
     return res.status(500).json({ message: 'Student creation failed.' });
+  }
+});
+
+app.post('/api/forgot-password/request', async (req, res) => {
+  const { email } = req.body;
+  const safeEmail = String(email || '').trim().toLowerCase();
+
+  if (!safeEmail) {
+    return res.status(400).json({ message: 'Email is required.' });
+  }
+
+  try {
+    const student = demoUsers.find((user) => user.email === safeEmail);
+    if (!student) {
+      return res.status(404).json({ message: 'No account found for that email.' });
+    }
+
+    const otp = generateOtp();
+    passwordResetCodes.set(safeEmail, { otp, expiresAt: Date.now() + 10 * 60 * 1000 });
+
+    return res.json({
+      message: 'A 6-digit OTP has been sent to your email. Use it to reset your password.',
+      otp,
+    });
+  } catch (error) {
+    console.error('OTP request failed:', error.message);
+    return res.status(500).json({ message: 'Unable to send OTP.' });
+  }
+});
+
+app.post('/api/forgot-password', async (req, res) => {
+  const { email, otp, newPassword, password } = req.body;
+  const safeEmail = String(email || '').trim().toLowerCase();
+  const safeOtp = String(otp || '').trim();
+  const safePassword = String(newPassword || password || '').trim();
+
+  if (!safeEmail || !safeOtp || !safePassword) {
+    return res.status(400).json({ message: 'Email, OTP and a new password are required.' });
+  }
+
+  try {
+    const student = demoUsers.find((user) => user.email === safeEmail);
+    if (!student) {
+      return res.status(404).json({ message: 'No account found for that email.' });
+    }
+
+    const resetRequest = passwordResetCodes.get(safeEmail);
+    if (!resetRequest) {
+      return res.status(400).json({ message: 'No active reset code found for this email. Please request a new OTP.' });
+    }
+
+    if (Date.now() > resetRequest.expiresAt) {
+      passwordResetCodes.delete(safeEmail);
+      return res.status(400).json({ message: 'Your OTP has expired. Please request a new one.' });
+    }
+
+    if (resetRequest.otp !== safeOtp) {
+      return res.status(400).json({ message: 'The OTP is incorrect. Please try again.' });
+    }
+
+    student.password = await hashPassword(safePassword);
+    passwordResetCodes.delete(safeEmail);
+    return res.json({ message: 'Password reset successful. Please log in with your new password.' });
+  } catch (error) {
+    console.error('Forgot password failed:', error.message);
+    return res.status(500).json({ message: 'Password reset failed.' });
   }
 });
 
@@ -357,17 +390,12 @@ app.patch('/api/admin/students/:id/reset-password', requireSession('admin'), asy
   }
 
   try {
-    if (!isDbConnected) {
-      const student = demoUsers.find((user) => String(user.id) === String(id));
-      if (!student) {
-        return res.status(404).json({ message: 'Student not found.' });
-      }
-      student.password = await hashPassword(safePassword);
-      return res.json({ message: 'Student password reset successfully.' });
+    const student = demoUsers.find((user) => String(user.id) === String(id));
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
     }
 
-    const passwordHash = await hashPassword(safePassword);
-    await db.promise().query('UPDATE students SET password = ? WHERE student_id = ?', [passwordHash, id]);
+    student.password = await hashPassword(safePassword);
     return res.json({ message: 'Student password reset successfully.' });
   } catch (error) {
     console.error('Password reset failed:', error.message);
@@ -377,17 +405,24 @@ app.patch('/api/admin/students/:id/reset-password', requireSession('admin'), asy
 
 app.get('/api/admin/orders', requireSession('admin'), async (req, res) => {
   try {
-    if (!isDbConnected) {
-      return res.json(demoOrders.map((order) => ({ order_id: order.id, order_number: order.orderNumber, order_status: order.status, total_amount: order.totalAmount, customer_name: order.customerName })));
-    }
+    return res.json(demoOrders.map((order) => {
+      const itemNames = (order.items || []).map((item) => item.name || item.item_name || `${Number(item.quantity || 1)}x item`);
+      const firstItem = itemNames[0] || 'Cafe order';
+      const customerName = order.customerName || 'Student';
+      const student = demoUsers.find((user) => String(user.id) === String(order.studentId));
 
-    const [rows] = await db.promise().query(
-      `SELECT o.order_id, o.order_number, o.order_status, o.total_amount, s.name AS customer_name
-       FROM orders o
-       LEFT JOIN students s ON s.student_id = o.student_id
-       ORDER BY o.order_date DESC`
-    );
-    return res.json(rows);
+      return {
+        order_id: order.id,
+        order_number: order.orderNumber,
+        order_status: order.status,
+        total_amount: order.totalAmount,
+        customer_name: customerName,
+        customer_email: student?.email || null,
+        item_name: firstItem,
+        items: order.items || [],
+        created_at: order.createdAt || new Date(order.id).toISOString(),
+      };
+    }));
   } catch (error) {
     console.error('Admin orders fetch failed:', error.message);
     return res.json(demoOrders);
@@ -403,17 +438,13 @@ app.patch('/api/admin/orders/:id/status', requireSession('admin'), async (req, r
   }
 
   try {
-    if (!isDbConnected) {
-      const order = demoOrders.find((entry) => String(entry.id) === String(id));
-      if (!order) {
-        return res.status(404).json({ message: 'Order not found.' });
-      }
-      order.status = status;
-      return res.json({ message: 'Order status updated.', order });
+    const order = demoOrders.find((entry) => String(entry.id) === String(id));
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found.' });
     }
 
-    await db.promise().query('UPDATE orders SET order_status = ? WHERE order_id = ?', [status, id]);
-    return res.json({ message: 'Order status updated.' });
+    order.status = status;
+    return res.json({ message: 'Order status updated.', order });
   } catch (error) {
     console.error('Order status update failed:', error.message);
     return res.status(500).json({ message: 'Order status update failed.' });
@@ -422,12 +453,7 @@ app.patch('/api/admin/orders/:id/status', requireSession('admin'), async (req, r
 
 app.get('/api/admin/menu', requireSession('admin'), async (req, res) => {
   try {
-    if (!isDbConnected) {
-      return res.json(respondWithMenu(demoMenu));
-    }
-
-    const [rows] = await db.promise().query('SELECT * FROM menu_items ORDER BY menu_item_id DESC');
-    return res.json(respondWithMenu(rows));
+    return res.json(respondWithMenu(demoMenu));
   } catch (error) {
     console.error('Admin menu load failed:', error.message);
     return res.status(500).json({ message: 'Could not load menu items.' });
@@ -442,14 +468,9 @@ app.post('/api/admin/menu', requireSession('admin'), async (req, res) => {
   }
 
   try {
-    if (!isDbConnected) {
-      const item = { id: Date.now(), item_name, description, price: Number(price), availability: true, image_url: image_url || demoMenu[0].image_url };
-      demoMenu.unshift(item);
-      return res.status(201).json({ message: 'Menu item created.', item });
-    }
-
-    const [result] = await db.promise().query('INSERT INTO menu_items (item_name, description, price, availability, image_url) VALUES (?, ?, ?, ?, ?)', [item_name, description, Number(price), true, image_url || '']);
-    return res.status(201).json({ message: 'Menu item created.', item: { id: result.insertId, item_name, description, price: Number(price), availability: true, image_url: image_url || '' } });
+    const item = { id: Date.now(), item_name, description, price: Number(price), availability: true, image_url: image_url || demoMenu[0].image_url };
+    demoMenu.unshift(item);
+    return res.status(201).json({ message: 'Menu item created.', item });
   } catch (error) {
     console.error('Admin menu create failed:', error.message);
     return res.status(500).json({ message: 'Menu item creation failed.' });
@@ -465,128 +486,67 @@ app.patch('/api/admin/menu/:id/availability', requireSession('admin'), async (re
   }
 
   try {
-    if (!isDbConnected) {
-      const item = demoMenu.find((entry) => String(entry.id) === String(id));
-      if (!item) {
-        return res.status(404).json({ message: 'Menu item not found.' });
-      }
-      item.availability = Boolean(availability);
-      return res.json({ message: 'Menu availability updated.', item });
-    }
-
-    const [rows] = await db.promise().query('SELECT * FROM menu_items WHERE menu_item_id = ?', [id]);
-    if (rows.length === 0) {
+    const item = demoMenu.find((entry) => String(entry.id) === String(id));
+    if (!item) {
       return res.status(404).json({ message: 'Menu item not found.' });
     }
 
-    await db.promise().query('UPDATE menu_items SET availability = ? WHERE menu_item_id = ?', [Boolean(availability), id]);
-    return res.json({ message: 'Menu availability updated.', item: normalizeMenuItem(rows[0]) });
+    item.availability = Boolean(availability);
+    return res.json({ message: 'Menu availability updated.', item });
   } catch (error) {
     console.error('Menu availability update failed:', error.message);
     return res.status(500).json({ message: 'Failed to update menu availability.' });
   }
 });
 
-const initializeDatabase = async () => {
-  try {
-    await db.promise().query('CREATE DATABASE IF NOT EXISTS cafe_connect');
-    await db.promise().query('USE cafe_connect');
+app.patch('/api/admin/menu/:id/price', requireSession('admin'), async (req, res) => {
+  const { id } = req.params;
+  const { price } = req.body;
+  const numericPrice = Number(price);
 
-    const schemaStatements = [
-      `CREATE TABLE IF NOT EXISTS students (
-        student_id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(150) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )`,
-      `CREATE TABLE IF NOT EXISTS administrators (
-        admin_id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(150) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL
-      )`,
-      `CREATE TABLE IF NOT EXISTS menu_items (
-        menu_item_id INT AUTO_INCREMENT PRIMARY KEY,
-        item_name VARCHAR(100) NOT NULL,
-        description TEXT,
-        price DECIMAL(10,2) NOT NULL,
-        availability BOOLEAN DEFAULT TRUE,
-        image_url VARCHAR(255)
-      )`,
-      `CREATE TABLE IF NOT EXISTS orders (
-        order_id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id INT,
-        order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-        total_amount DECIMAL(10,2) NOT NULL,
-        order_status VARCHAR(50) DEFAULT 'Pending',
-        order_number VARCHAR(50) NOT NULL,
-        FOREIGN KEY (student_id) REFERENCES students(student_id)
-      )`,
-      `CREATE TABLE IF NOT EXISTS order_items (
-        order_item_id INT AUTO_INCREMENT PRIMARY KEY,
-        order_id INT,
-        menu_item_id INT,
-        quantity INT NOT NULL,
-        item_price DECIMAL(10,2) NOT NULL,
-        subtotal DECIMAL(10,2) NOT NULL,
-        FOREIGN KEY (order_id) REFERENCES orders(order_id),
-        FOREIGN KEY (menu_item_id) REFERENCES menu_items(menu_item_id)
-      )`,
-      `CREATE TABLE IF NOT EXISTS payments (
-        payment_id INT AUTO_INCREMENT PRIMARY KEY,
-        order_id INT,
-        payment_method VARCHAR(50) NOT NULL,
-        payment_amount DECIMAL(10,2) NOT NULL,
-        payment_status VARCHAR(50) DEFAULT 'Pending',
-        payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (order_id) REFERENCES orders(order_id)
-      )`,
-    ];
-
-    for (const statement of schemaStatements) {
-      await db.promise().query(statement);
-    }
-
-    console.log('Database schema is ready.');
-  } catch (error) {
-    console.error('Database initialization failed:', error.message);
+  if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+    return res.status(400).json({ message: 'Please enter a valid price greater than zero.' });
   }
-};
 
-const ensureDefaultAdmin = async () => {
   try {
-    const [rows] = await db.promise().query('SELECT admin_id FROM administrators WHERE email = ?', [DEFAULT_ADMIN_EMAIL]);
-    if (rows.length > 0) {
-      return;
+    const item = demoMenu.find((entry) => String(entry.id) === String(id));
+    if (!item) {
+      return res.status(404).json({ message: 'Menu item not found.' });
     }
 
-    const passwordHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
-    await db.promise().query('INSERT INTO administrators (name, email, password) VALUES (?, ?, ?)', ['System Admin', DEFAULT_ADMIN_EMAIL, passwordHash]);
-    console.log(`Created default admin account: ${DEFAULT_ADMIN_EMAIL} / ${DEFAULT_ADMIN_PASSWORD}`);
+    item.price = numericPrice;
+    return res.json({ message: 'Menu price updated.', item });
   } catch (error) {
-    console.error('Default admin account setup failed:', error.message);
+    console.error('Menu price update failed:', error.message);
+    return res.status(500).json({ message: 'Failed to update menu price.' });
   }
-};
-
-const connectDatabase = () => {
-  db.connect((err) => {
-    if (err) {
-      isDbConnected = false;
-      console.log('MySQL connection failed. The app will continue in demo mode:', err.message);
-      return;
-    }
-
-    isDbConnected = true;
-    console.log('Connected to MySQL database.');
-    initializeDatabase().finally(() => {
-      ensureDefaultAdmin();
-    });
-  });
-};
-
-connectDatabase();
-
-app.listen(port, () => {
-  console.log(`Cafe Connect server running on port ${port}`);
 });
+
+const connectDatabase = async () => {
+  try {
+    await connectDB();
+    isDbConnected = true;
+    console.log('MongoDB connection successful.');
+  } catch (error) {
+    isDbConnected = false;
+    console.log('MongoDB unavailable. Continuing in demo mode:', error.message);
+  }
+};
+
+if (require.main === module) {
+  connectDatabase();
+  app.listen(port, () => {
+    console.log(`Cafe Connect server running on port ${port}`);
+  });
+}
+
+module.exports = {
+  app,
+  demoUsers,
+  demoOrders,
+  activeSessions,
+  passwordResetCodes,
+  createSession,
+  requireSession,
+};
+

@@ -2,12 +2,16 @@
   "name": "cafe-connect",
   "private": true,
   "scripts": {
-    "frontend": "npm --prefix frontend run dev -- --host",
+    "frontend": "npm --prefix frontend run dev -- --host 0.0.0.0",
     "backend": "npm --prefix server run start",
-    "dev": "npm --prefix frontend run dev -- --host",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "start": "npm --prefix server run start"
   },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  },
   "dependencies": {
+    "mongoose": "^9.11.4",
     "mysql2": "^3.24.6"
   }
 }

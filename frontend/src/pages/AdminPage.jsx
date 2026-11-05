@@ -19,8 +19,8 @@ const initialPasswordForm = {
   newPassword: '',
 };
 
-function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
-  const [menuItems, setMenuItems] = useState([]);
+function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: sharedMenuItems = [], setMenuItems: setSharedMenuItems }) {
+  const [menuItems, setMenuItemsState] = useState(sharedMenuItems);
   const [orders, setOrders] = useState([]);
   const [students, setStudents] = useState([]);
   const [form, setForm] = useState(initialForm);
@@ -28,8 +28,21 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
   const [activeTab, setActiveTab] = useState('Live Orders Queue');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priceEdits, setPriceEdits] = useState({});
   const [loginForm, setLoginForm] = useState({ email: 'admin@cafeconnect.com', password: 'admin123' });
   const menuFormRef = useRef(null);
+
+  const setMenuItems = (updater) => {
+    const nextValue = typeof updater === 'function' ? updater(menuItems) : updater;
+    setMenuItemsState(nextValue);
+    if (setSharedMenuItems) {
+      setSharedMenuItems(nextValue);
+    }
+  };
+
+  useEffect(() => {
+    setMenuItemsState(sharedMenuItems);
+  }, [sharedMenuItems]);
 
   const loadDashboardData = async () => {
     try {
@@ -39,17 +52,19 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
         apiRequest('/api/admin/students'),
       ]);
 
-      setMenuItems((menuResponse || []).map((item) => ({
+      const nextMenu = (menuResponse || []).map((item) => ({
         ...item,
         name: item.item_name || item.name,
         available: item.availability ?? true,
         image: item.image_url || item.image || '',
-      })));
+      }));
+
+      setMenuItems(nextMenu);
 
       setOrders((ordersResponse || []).map((order) => ({
         id: order.order_id || order.id,
         customer: order.customer_name || order.customer || 'Student',
-        item: order.item_name || 'Cafe order',
+        item: order.item_name || (Array.isArray(order.items) && order.items.length ? order.items.map((entry) => entry.name || entry.item_name || 'item').join(', ') : 'Cafe order'),
         total: Number(order.total_amount || order.total || 0),
         status: order.order_status || order.status || 'Pending',
       })));
@@ -61,9 +76,16 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
   };
 
   useEffect(() => {
-    if (adminUser) {
-      loadDashboardData();
+    if (!adminUser) {
+      return undefined;
     }
+
+    loadDashboardData();
+    const intervalId = window.setInterval(() => {
+      loadDashboardData();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
   }, [adminUser]);
 
   const stats = useMemo(() => {
@@ -158,6 +180,27 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
     }
   };
 
+  const updateMenuPrice = async (id) => {
+    const value = Number(priceEdits[id]);
+    if (!Number.isFinite(value) || value <= 0) {
+      showMessage('Enter a valid price greater than zero.', 'error');
+      return;
+    }
+
+    try {
+      const payload = await apiRequest(`/api/admin/menu/${id}/price`, {
+        method: 'PATCH',
+        body: JSON.stringify({ price: value }),
+      });
+
+      setMenuItems((current) => current.map((entry) => entry.id === id ? { ...entry, price: value, available: entry.available ?? true } : entry));
+      setPriceEdits((current) => ({ ...current, [id]: String(value) }));
+      showMessage(payload.message || 'Price updated.', 'success');
+    } catch (error) {
+      showMessage(error.message || 'Price update failed.', 'error');
+    }
+  };
+
   const focusAddItemForm = () => {
     menuFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const input = menuFormRef.current?.querySelector('input[name="name"]');
@@ -178,6 +221,11 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
     } catch (error) {
       showMessage(error.message || 'Failed to update menu availability.', 'error');
     }
+  };
+
+  const removeMenuItem = (id) => {
+    setMenuItems((current) => current.filter((entry) => entry.id !== id));
+    showMessage('Menu item removed from the list.', 'info');
   };
 
   const updateOrderStatus = async (id, nextStatus) => {
@@ -255,6 +303,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
               Password
               <input className="form-input" type="password" name="password" value={loginForm.password} onChange={handleLoginFormChange} required />
             </label>
+            <p className="helper-text">Passwords are case sensitive.</p>
 
             <button type="submit" className="primary-btn" disabled={isSubmitting}>
               {isSubmitting ? 'Signing in...' : 'Admin Login'}
@@ -364,11 +413,28 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage }) {
                 {menuItems.map((item) => (
                   <div className="menu-table-row" key={item.id}>
                     <strong>{item.name}</strong>
-                    <span>{item.available ? 'Available' : 'Hidden'}</span>
-                    <span>R {Number(item.price || 0).toFixed(2)}</span>
-                    <button type="button" className="small-action" onClick={() => toggleItemAvailability(item.id)}>
-                      {item.available ? 'Hide' : 'Show'}
-                    </button>
+                    <span>{item.available === false ? 'Unavailable' : 'Available'}</span>
+                    <div className="menu-price-editor">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={priceEdits[item.id] ?? Number(item.price || 0)}
+                        onChange={(event) => setPriceEdits((current) => ({ ...current, [item.id]: event.target.value }))}
+                        aria-label={`Edit price for ${item.name}`}
+                      />
+                      <button type="button" className="small-action" onClick={() => updateMenuPrice(item.id)}>
+                        Save
+                      </button>
+                    </div>
+                    <div className="menu-row-actions">
+                      <button type="button" className="small-action" onClick={() => toggleItemAvailability(item.id)}>
+                        {item.available === false ? 'Show' : 'Hide'}
+                      </button>
+                      <button type="button" className="small-action danger" onClick={() => removeMenuItem(item.id)}>
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

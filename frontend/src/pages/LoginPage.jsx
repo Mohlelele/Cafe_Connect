@@ -53,6 +53,12 @@ function LoginPage({ navigate, onLogin, showMessage }) {
         </form>
 
         <p className="auth-link-row">
+          <button type="button" className="inline-link" onClick={() => navigate('/forgot-password')}>
+            Forgot password?
+          </button>
+        </p>
+
+        <p className="auth-link-row">
           Don’t have an account?{' '}
           <button type="button" className="inline-link" onClick={() => navigate('/register')}>
             Register here

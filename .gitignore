@@ -27,3 +27,5 @@ Thumbs.db
 
 # Git
 *.swp
+.vercel
+.env*
