@@ -349,7 +349,7 @@ function App() {
       return <WelcomePage navigate={navigate} />;
     }
 
-    if (['/menu', '/orders', '/cart'].includes(currentPath) && !studentUser) {
+    if (['/menu', '/orders', '/cart'].includes(currentPath) && !studentUser && !adminUser) {
       return <WelcomePage navigate={navigate} />;
     }
 
