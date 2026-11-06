@@ -136,6 +136,10 @@ function App() {
 
   useEffect(() => {
     const loadMenu = async () => {
+      if (!studentUser) {
+        return;
+      }
+
       try {
         const response = await apiRequest('/api/menu');
         if (Array.isArray(response) && response.length > 0) {
@@ -156,7 +160,12 @@ function App() {
     };
 
     loadMenu();
-  }, []);
+    const intervalId = window.setInterval(() => {
+      loadMenu();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [studentUser]);
 
   useEffect(() => {
     if (studentUser) {

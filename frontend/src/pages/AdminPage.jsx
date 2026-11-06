@@ -330,8 +330,9 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
   }
 
   return (
-    <div className="admin-page">
-      <div className="admin-header">
+    <div className="admin-dashboard-shell">
+      <div className="admin-page">
+        <div className="admin-header">
         <div className="admin-header-copy">
           <div className="admin-tag">Admin operations</div>
           <h1>Richfield Campus</h1>
@@ -522,6 +523,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
           )}
         </aside>
       </div>
+    </div>
     </div>
   );
 }

@@ -563,6 +563,7 @@ if (require.main === module) {
 
 module.exports = {
   app,
+  demoMenu,
   demoUsers,
   demoOrders,
   activeSessions,

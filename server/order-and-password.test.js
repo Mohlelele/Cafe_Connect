@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { app, demoUsers, demoOrders, passwordResetCodes, createSession } = require('./index.js');
+const { app, demoMenu, demoUsers, demoOrders, passwordResetCodes, createSession } = require('./index.js');
 const { hashPassword, verifyPassword } = require('./auth');
 
 function makeRequest(path, { method = 'GET', body, headers = {} } = {}) {
@@ -189,4 +189,32 @@ test('status updates from admin are reflected in the student order list', async 
 
   assert.equal(studentResponse.statusCode, 200);
   assert.equal(studentResponse.json.some((entry) => entry.id === order.id && entry.status === 'Ready'), true);
+});
+
+test('admin menu price changes are reflected in the student menu payload', async () => {
+  const menuItem = demoMenu[0];
+  const originalPrice = Number(menuItem.price || 0);
+  const updatedPrice = originalPrice + 10;
+
+  const adminToken = createSession('admin', demoUsers.find((entry) => entry.email === 'admin@cafeconnect.com'));
+  const adminResponse = await makeRequest(`/api/admin/menu/${menuItem.id}/price`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: JSON.stringify({ price: updatedPrice }),
+  });
+
+  assert.equal(adminResponse.statusCode, 200);
+
+  const studentToken = createSession('student', demoUsers.find((entry) => entry.email === 'mathapelo@cafeconnect.com'));
+  const studentResponse = await makeRequest('/api/menu', {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${studentToken}` },
+  });
+
+  assert.equal(studentResponse.statusCode, 200);
+  const studentItem = studentResponse.json.find((entry) => entry.id === menuItem.id);
+  assert.ok(studentItem);
+  assert.equal(Number(studentItem.price), updatedPrice);
+
+  menuItem.price = originalPrice;
 });

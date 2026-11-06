@@ -307,6 +307,22 @@ img {
   width: 100%;
 }
 
+.admin-dashboard-shell {
+  background: linear-gradient(180deg, #0f1f2f 0%, #162b42 100%);
+  border: 1px solid rgba(99, 132, 167, 0.25);
+  border-radius: 30px;
+  padding: 18px;
+  box-shadow: 0 18px 28px rgba(10, 20, 32, 0.18);
+}
+
+.student-dashboard-shell {
+  background: linear-gradient(180deg, #fffaf2 0%, #f5f1eb 100%);
+  border: 1px solid rgba(194, 166, 87, 0.25);
+  border-radius: 28px;
+  padding: 18px;
+  box-shadow: 0 14px 26px rgba(68, 52, 16, 0.08);
+}
+
 .hero-banner {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;

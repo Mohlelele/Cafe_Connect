@@ -14,8 +14,9 @@ function OrdersPage({ navigate, orders = [], studentUser }) {
   };
 
   return (
-    <div className="orders-page">
-      <div className="orders-header">
+    <div className="student-dashboard-shell">
+      <div className="orders-page">
+        <div className="orders-header">
         <div>
           <h1 className="section-title">My Orders</h1>
           <p className="section-subtitle">Track kitchen status and view your receipts.</p>
@@ -61,6 +62,7 @@ function OrdersPage({ navigate, orders = [], studentUser }) {
           ))
         )}
       </div>
+    </div>
     </div>
   );
 }
