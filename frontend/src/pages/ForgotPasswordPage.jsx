@@ -10,28 +10,24 @@ function ForgotPasswordPage({ navigate, showMessage }) {
     setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const handleRequestOtp = async () => {
-    if (!form.email.trim()) {
-      showMessage('Please enter your email before continuing.', 'error');
-      return;
-    }
-
-    try {
-      const payload = await apiRequest('/api/forgot-password/request', {
-        method: 'POST',
-        body: JSON.stringify({ email: form.email }),
-      });
-      showMessage(payload.message || 'You can now set a new password for this account.', 'success');
-    } catch (error) {
-      showMessage(error.message || 'Could not continue with password reset.', 'error');
-    }
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!form.email.trim() || !form.newPassword.trim()) {
-      showMessage('Please provide your email and a new password.', 'error');
+    const email = form.email.trim();
+    const newPassword = form.newPassword.trim();
+
+    if (!email || !newPassword) {
+      showMessage('Please enter your email and a new password.', 'error');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showMessage('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showMessage('Password must be at least 6 characters long.', 'error');
       return;
     }
 
@@ -40,40 +36,34 @@ function ForgotPasswordPage({ navigate, showMessage }) {
     try {
       const payload = await apiRequest('/api/forgot-password', {
         method: 'POST',
-        body: JSON.stringify(form),
+        body: JSON.stringify({ email, newPassword }),
       });
+
       showMessage(payload.message || 'Password reset successful.', 'success');
       navigate('/login');
     } catch (error) {
-      showMessage(error.message || 'Password reset failed.', 'error');
+      showMessage(error.message || 'Password reset failed. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const canRequestOtp = form.email.trim().length > 0 && !isSubmitting;
-  const canSubmitReset = form.email.trim().length > 0 && form.newPassword.trim().length > 0 && !isSubmitting;
-
   return (
     <div className="auth-page">
       <div className="auth-card">
         <h2 className="auth-title">Reset Password</h2>
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+        <form className="auth-form" onSubmit={handleSubmit}>
           <label className="form-field">
             Email
-            <input className="form-input" type="email" name="email" placeholder="student@example.com" value={form.email} onChange={handleChange} />
+            <input className="form-input" type="email" name="email" placeholder="student@example.com" value={form.email} onChange={handleChange} required />
           </label>
-
-          <button type="button" className="secondary-btn" onClick={handleRequestOtp} disabled={!canRequestOtp}>
-            Check account
-          </button>
 
           <label className="form-field">
             New password
-            <input className="form-input" type="password" name="newPassword" placeholder="Enter a new password" value={form.newPassword} onChange={handleChange} />
+            <input className="form-input" type="password" name="newPassword" placeholder="Enter a new password" value={form.newPassword} onChange={handleChange} required />
           </label>
 
-          <button type="submit" className="primary-btn" disabled={!canSubmitReset}>
+          <button type="submit" className="primary-btn" disabled={isSubmitting}>
             {isSubmitting ? 'Resetting...' : 'Reset password'}
           </button>
         </form>

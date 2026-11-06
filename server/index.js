@@ -65,14 +65,11 @@ const demoMenu = [
   { id: 2, item_name: 'Chicken Burger Deluxe', description: 'Crispy chicken fillet with cheese, slaw and special sauce.', price: 68, availability: true, image_url: 'https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=900&q=80' },
   { id: 3, item_name: 'Veggie Burger', description: 'Plant-based patty with grilled veg, lettuce and aioli.', price: 60, availability: true, image_url: 'https://images.unsplash.com/photo-1520072959219-c595dc870360?auto=format&fit=crop&w=900&q=80' },
   { id: 4, item_name: 'Margherita Pizza', description: 'Classic mozzarella, tomato sauce and basil on a thin crust.', price: 72, availability: true, image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80' },
-  { id: 5, item_name: 'Pepperoni Pizza', description: 'Pepperoni, melted cheese and tomato sauce with a crispy finish.', price: 82, availability: true, image_url: 'https://images.unsplash.com/photo-1548365328-9f547fb9587c?auto=format&fit=crop&w=900&q=80' },
-  { id: 6, item_name: 'BBQ Chicken Pizza', description: 'Barbecue chicken, onion, herbs and gooey cheese.', price: 88, availability: true, image_url: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=900&q=80' },
   { id: 7, item_name: 'Beef Pie', description: 'Golden pastry filled with savoury beef and rich gravy.', price: 39, availability: true, image_url: 'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?auto=format&fit=crop&w=900&q=80' },
   { id: 8, item_name: 'Chicken Pie', description: 'Tender chicken pie with creamy filling and flaky crust.', price: 42, availability: true, image_url: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?auto=format&fit=crop&w=900&q=80' },
   { id: 9, item_name: 'Hot Fried Chicken', description: 'Golden fried chicken pieces with a spicy crunch and dip.', price: 75, availability: true, image_url: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=80' },
   { id: 10, item_name: 'Chicken Wrap', description: 'Grilled chicken wrap with salad, relish and creamy dressing.', price: 52, availability: true, image_url: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=900&q=80' },
   { id: 11, item_name: 'Chicken Bucket Meal', description: 'Crispy chicken bucket with fries and coleslaw.', price: 96, availability: true, image_url: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=900&q=80' },
-  { id: 12, item_name: 'Loaded Fries', description: 'Crispy fries topped with cheese sauce and seasoning.', price: 34, availability: true, image_url: 'https://images.unsplash.com/photo-1576106678347-79b3d65a550a?auto=format&fit=crop&w=900&q=80' },
   { id: 13, item_name: 'Chicken Curry Bowl', description: 'Traditional curry with chicken, rice and a rich sauce.', price: 78, availability: true, image_url: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80' },
   { id: 14, item_name: 'Cappuccino', description: 'Creamy espresso-based cappuccino with silky foam.', price: 22, availability: true, image_url: 'https://images.unsplash.com/photo-1497636577773-f1231844b336?auto=format&fit=crop&w=900&q=80' },
   { id: 15, item_name: 'Iced Latte', description: 'Smooth iced coffee with a clean, mellow finish.', price: 24, availability: true, image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80' },
@@ -539,8 +536,15 @@ app.patch('/api/admin/menu/:id/price', requireSession('admin'), async (req, res)
       return res.status(404).json({ message: 'Menu item not found.' });
     }
 
+    const previousPrice = Number(item.price || 0);
     item.price = numericPrice;
-    return res.json({ message: 'Menu price updated.', item });
+    return res.json({
+      message: 'Menu price updated.',
+      item,
+      previousPrice,
+      newPrice: numericPrice,
+      change: numericPrice - previousPrice,
+    });
   } catch (error) {
     console.error('Menu price update failed:', error.message);
     return res.status(500).json({ message: 'Failed to update menu price.' });

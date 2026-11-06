@@ -406,6 +406,44 @@ img {
   margin-top: 24px;
 }
 
+.student-announcement-banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: linear-gradient(180deg, #fff5dd 0%, #f9ebc3 100%);
+  border: 1px solid rgba(200, 156, 69, 0.35);
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 18px rgba(48, 44, 17, 0.06);
+}
+
+.student-announcement-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d9931e;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.student-announcement-banner strong {
+  display: block;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+
+.student-announcement-banner p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .featured-wrap {
   margin-top: 28px;
 }

@@ -65,7 +65,6 @@ const DEMO_MENU = [
   { id: 5, item_name: 'Cappuccino', description: 'Creamy espresso-based cappuccino topped with velvety foam.', price: 22, availability: true, image_url: 'https://images.unsplash.com/photo-1497636577773-f1231844b336?auto=format&fit=crop&w=900&q=80' },
   { id: 6, item_name: 'Iced Latte', description: 'Smooth iced latte with a hint of vanilla sweetness.', price: 24, availability: true, image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80' },
   { id: 7, item_name: 'Mango Juice', description: 'Cold mango juice bursting with tropical flavour.', price: 18, availability: true, image_url: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?auto=format&fit=crop&w=900&q=80' },
-  { id: 8, item_name: 'Chicken Wrap', description: 'A tender grilled chicken wrap with crunchy salad and sauce.', price: 36, availability: true, image_url: 'https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=900&q=80' },
   { id: 9, item_name: 'Veggie Pasta', description: 'Creamy veggie pasta with roasted vegetables and herbs.', price: 46, availability: true, image_url: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=900&q=80' },
   { id: 10, item_name: 'Choc Chip Muffin', description: 'Warm muffin packed with rich chocolate chips.', price: 16, availability: true, image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80' },
   { id: 11, item_name: 'Masala Tea', description: 'A fragrant, comforting masala tea served hot.', price: 14, availability: true, image_url: 'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=900&q=80' },
@@ -119,6 +118,19 @@ const getStoredDemoOrders = () => {
     return saved ? JSON.parse(saved) : [];
   } catch {
     return [];
+  }
+};
+
+const getCurrentStudent = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const saved = window.localStorage.getItem('cafe-connect-student');
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
   }
 };
 
@@ -212,7 +224,7 @@ const demoResponseFor = (endpoint, options = {}) => {
         id: Date.now(),
         orderNumber: `CC-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: data.customerName || 'Student',
-        studentId: data.studentId || 1,
+        studentId: data.studentId || getCurrentStudent()?.id || 1,
         totalAmount,
         paymentMethod: data.paymentMethod || 'Cash',
         status: 'Pending',
@@ -229,10 +241,17 @@ const demoResponseFor = (endpoint, options = {}) => {
         orderNumber: order.orderNumber,
         totalAmount,
         paymentMethod: order.paymentMethod,
+        orderId: order.id,
       };
     }
 
-    return getStoredDemoOrders();
+    const currentStudent = getCurrentStudent();
+    const orders = getStoredDemoOrders();
+    if (!currentStudent) {
+      return orders;
+    }
+
+    return orders.filter((order) => String(order.studentId) === String(currentStudent.id));
   }
 
   if (endpoint === '/api/admin/menu') {
@@ -263,6 +282,25 @@ const demoResponseFor = (endpoint, options = {}) => {
       return { message: 'Menu availability updated.', item };
     }
 
+    if (endpoint.includes('/price')) {
+      const itemId = Number(endpoint.split('/')[4]);
+      const item = DEMO_MENU.find((entry) => Number(entry.id) === itemId);
+      if (!item) {
+        throw new Error('Menu item not found.');
+      }
+      const previousPrice = Number(item.price || 0);
+      const nextPrice = Number(data.price ?? previousPrice);
+      item.price = nextPrice;
+      const difference = nextPrice - previousPrice;
+      return {
+        message: 'Menu price updated.',
+        item,
+        previousPrice,
+        newPrice: nextPrice,
+        change: difference,
+      };
+    }
+
     return { message: 'Demo action completed.' };
   }
 
@@ -271,18 +309,21 @@ const demoResponseFor = (endpoint, options = {}) => {
     if (liveOrders.length > 0) {
       return liveOrders.map((order) => ({
         order_id: order.id,
+        order_number: order.orderNumber,
+        orderNumber: order.orderNumber,
         customer_name: order.customerName || 'Student',
         item_name: (order.items || []).map((entry) => entry.name || entry.item_name || 'item').join(', ') || 'Cafe order',
         total_amount: Number(order.totalAmount || 0),
         order_status: order.status || 'Pending',
         items: order.items || [],
+        created_at: order.createdAt,
       }));
     }
 
     return [
-      { order_id: 101, customer_name: 'Mathapelo Mokoena', item_name: 'Chicken Burger', total_amount: 220, order_status: 'Pending' },
-      { order_id: 102, customer_name: 'Lerato Ndlovu', item_name: 'Cappuccino', total_amount: 90, order_status: 'Prep' },
-      { order_id: 103, customer_name: 'Sipho Khumalo', item_name: 'Rice and Curry', total_amount: 180, order_status: 'Ready' },
+      { order_id: 101, order_number: 'CC-1001', orderNumber: 'CC-1001', customer_name: 'Mathapelo Mokoena', item_name: 'Chicken Burger', total_amount: 220, order_status: 'Pending' },
+      { order_id: 102, order_number: 'CC-1002', orderNumber: 'CC-1002', customer_name: 'Lerato Ndlovu', item_name: 'Cappuccino', total_amount: 90, order_status: 'Prep' },
+      { order_id: 103, order_number: 'CC-1003', orderNumber: 'CC-1003', customer_name: 'Sipho Khumalo', item_name: 'Rice and Curry', total_amount: 180, order_status: 'Ready' },
     ];
   }
 

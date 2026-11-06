@@ -32,22 +32,6 @@ const menuItems = [
     available: true,
   },
   {
-    id: 5,
-    name: 'Pepperoni Pizza',
-    description: 'Pepperoni, melted cheese and tomato sauce with a crispy finish.',
-    price: 82,
-    image: 'https://images.unsplash.com/photo-1548365328-9f547fb9587c?auto=format&fit=crop&w=900&q=80',
-    available: true,
-  },
-  {
-    id: 6,
-    name: 'BBQ Chicken Pizza',
-    description: 'Barbecue chicken, onion, herbs and gooey cheese.',
-    price: 88,
-    image: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=900&q=80',
-    available: true,
-  },
-  {
     id: 7,
     name: 'Beef Pie',
     description: 'Golden pastry filled with savoury beef and rich gravy.',
@@ -85,14 +69,6 @@ const menuItems = [
     description: 'Crispy chicken bucket with fries and coleslaw.',
     price: 96,
     image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=900&q=80',
-    available: true,
-  },
-  {
-    id: 12,
-    name: 'Loaded Fries',
-    description: 'Crispy fries topped with cheese sauce and seasoning.',
-    price: 34,
-    image: 'https://images.unsplash.com/photo-1576106678347-79b3d65a550a?auto=format&fit=crop&w=900&q=80',
     available: true,
   },
   {

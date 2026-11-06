@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BellIcon, ClockIcon, LogoIcon, MenuIcon, ArrowRightIcon } from './components/Icons';
 import menuItemsData from './data/menu';
 import { apiRequest } from './api';
-import HomePage from './pages/HomePage';
 import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -11,6 +10,7 @@ import MenuPage from './pages/MenuPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminPage from './pages/AdminPage';
 import AboutPage from './pages/AboutPage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
 import CartPage from './pages/CartPage';
 
 const STORAGE_KEYS = {
@@ -49,6 +49,7 @@ function App() {
       return defaultAnnouncements;
     }
   });
+  const [adminOrders, setAdminOrders] = useState([]);
   const [studentUser, setStudentUser] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.student);
@@ -102,6 +103,30 @@ function App() {
       setOrders([]);
     }
   }, [studentUser]);
+
+  const fetchAdminOrders = useCallback(async () => {
+    if (!adminUser) {
+      setAdminOrders([]);
+      return;
+    }
+
+    try {
+      const response = await apiRequest('/api/admin/orders');
+      const nextOrders = Array.isArray(response) ? response : [];
+
+      setAdminOrders(nextOrders.map((order) => ({
+        id: order.order_id || order.id,
+        orderNumber: order.order_number || order.orderNumber || order.order_id || order.id,
+        customer: order.customer_name || order.customer || 'Student',
+        status: order.order_status || order.status || 'Pending',
+        total: Number(order.total_amount || order.total || 0),
+        items: Array.isArray(order.items) ? order.items : [{ name: order.item_name || 'Cafe order', quantity: 1, price: Number(order.total_amount || order.total || 0) }],
+        createdAt: order.created_at || order.createdAt || new Date().toISOString(),
+      })));
+    } catch {
+      setAdminOrders([]);
+    }
+  }, [adminUser]);
 
   useEffect(() => {
     const handleLocationChange = () => setCurrentPath(window.location.pathname || '/');
@@ -190,17 +215,40 @@ function App() {
   useEffect(() => {
     if (currentPath === '/' && studentUser) {
       navigate('/menu');
+      return;
     }
     if (currentPath === '/' && adminUser) {
       navigate('/admin');
+      return;
     }
 
-    if (adminUser && ['/menu', '/orders', '/cart', '/about', '/announcements', '/login', '/register', '/forgot-password'].includes(currentPath)) {
+    if (adminUser && ['/menu', '/orders', '/cart', '/about'].includes(currentPath)) {
       navigate('/admin');
+      return;
     }
 
-    if (studentUser && ['/admin', '/admin-login'].includes(currentPath)) {
+    if (studentUser && ['/admin', '/admin-login', '/customer-view'].includes(currentPath)) {
       navigate('/menu');
+      return;
+    }
+
+    if (!studentUser && !adminUser && ['/menu', '/orders', '/cart'].includes(currentPath)) {
+      navigate('/');
+      return;
+    }
+
+    if (!adminUser && currentPath === '/admin') {
+      navigate('/admin-login');
+      return;
+    }
+
+    if (adminUser && currentPath === '/admin-login') {
+      navigate('/admin');
+      return;
+    }
+
+    if (!adminUser && currentPath === '/customer-view') {
+      navigate('/admin-login');
     }
   }, [studentUser, adminUser, currentPath]);
 
@@ -216,6 +264,20 @@ function App() {
 
     return () => window.clearInterval(intervalId);
   }, [studentUser, currentPath, fetchStudentOrders]);
+
+  useEffect(() => {
+    if (!adminUser) {
+      setAdminOrders([]);
+      return undefined;
+    }
+
+    fetchAdminOrders();
+    const intervalId = window.setInterval(() => {
+      fetchAdminOrders();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [adminUser, currentPath, fetchAdminOrders]);
 
   useEffect(() => {
     if (!flashMessage.message) {
@@ -252,12 +314,14 @@ function App() {
 
   const logoutStudent = () => {
     setStudentUser(null);
+    setAdminUser(null);
     setAuthToken('');
     showMessage('You have been logged out.', 'info');
     navigate('/');
   };
 
   const logoutAdmin = () => {
+    setStudentUser(null);
     setAdminUser(null);
     setAuthToken('');
     showMessage('Admin logged out.', 'info');
@@ -351,7 +415,9 @@ function App() {
   };
 
   const renderPage = () => {
-    if (currentPath === '/' && !studentUser && !adminUser) {
+    if (currentPath === '/') {
+      if (studentUser) return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} announcements={announcements} />;
+      if (adminUser) return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} announcements={announcements} setAnnouncements={setAnnouncements} />;
       return <WelcomePage navigate={navigate} />;
     }
 
@@ -359,7 +425,7 @@ function App() {
       return <WelcomePage navigate={navigate} />;
     }
 
-    if (adminUser && ['/menu', '/orders', '/cart', '/about', '/announcements', '/login', '/register', '/forgot-password'].includes(currentPath)) {
+    if (adminUser && ['/menu', '/orders', '/cart', '/about'].includes(currentPath)) {
       return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} announcements={announcements} setAnnouncements={setAnnouncements} />;
     }
 
@@ -367,11 +433,14 @@ function App() {
       return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
     }
 
-    if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
+    if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} announcements={announcements} />;
     if (currentPath === '/orders') return <OrdersPage navigate={navigate} orders={orders} studentUser={studentUser} />;
     if (currentPath === '/about') return <AboutPage navigate={navigate} />;
+    if (currentPath === '/announcements') return <AnnouncementsPage announcements={announcements} setAnnouncements={setAnnouncements} isAdmin={false} />;
     if (currentPath === '/customer-view') {
-      const customerHistory = orders.length ? orders : [{ id: 'No orders yet', customer: 'No customer history available', time: '—', status: 'No orders', items: [], total: 0, payment: 'N/A' }];
+      const customerHistory = (adminUser ? adminOrders : orders).length
+        ? (adminUser ? adminOrders : orders)
+        : [{ id: 'No orders yet', customer: 'No customer history available', time: '—', status: 'No orders', items: [], total: 0, payment: 'N/A' }];
       return (
         <div className="content-page">
           <div className="content-card wide-card">
@@ -379,11 +448,11 @@ function App() {
             <p className="section-subtitle">Order history and customer activity</p>
             <div className="announcement-list">
               {customerHistory.map((order) => (
-                <div className="announcement-item" key={order.id || `${order.customer}-${order.time}`}>
+                <div className="announcement-item" key={order.id || `${order.customer}-${order.time || 'now'}`}>
                   <span className="announcement-tag">{order.status || 'Order'}</span>
                   <div>
                     <h3>{order.customer || 'Customer'}</h3>
-                    <p>{order.orderNumber || order.id} • {order.items.length ? `${order.items.length} item(s)` : 'No items'} • Total: R {Number(order.total || 0).toFixed(2)}</p>
+                    <p>{order.orderNumber || order.id} • {Array.isArray(order.items) && order.items.length ? `${order.items.length} item(s)` : 'No items'} • Total: R {Number(order.total || 0).toFixed(2)}</p>
                   </div>
                 </div>
               ))}
@@ -398,7 +467,7 @@ function App() {
     if (currentPath === '/forgot-password') return <ForgotPasswordPage navigate={navigate} showMessage={showMessage} />;
     if (currentPath === '/admin-login') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} announcements={announcements} setAnnouncements={setAnnouncements} />;
     if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} announcements={announcements} setAnnouncements={setAnnouncements} />;
-    return <HomePage navigate={navigate} menuItems={menuItems} addToCart={addToCart} />;
+    return <WelcomePage navigate={navigate} />;
   };
 
   const renderHeader = () => {
@@ -431,7 +500,7 @@ function App() {
           <div className="header-actions">
             <button type="button" className="user-pill" onClick={() => { if (adminUser) { logoutAdmin(); return; } navigate('/admin-login'); }}>
               <span className="user-avatar">A</span>
-              <span className="user-label">{adminUser ? adminUser.name : 'Admin Login'}</span>
+              {adminUser ? <span className="user-label">{adminUser.name}</span> : null}
               <ArrowRightIcon className="user-arrow" />
             </button>
           </div>
@@ -449,19 +518,20 @@ function App() {
         </div>
 
         <nav className="main-nav" aria-label="Main navigation">
-          <button type="button" className={currentPath === '/' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/')}>
-            <span className="nav-label">Home</span>
-          </button>
-
           <button type="button" className={currentPath === '/menu' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/menu')}>
             <MenuIcon className="nav-icon" />
             <span className="nav-label">Menu</span>
           </button>
 
-          <button type="button" className={currentPath === '/orders' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/orders')}>
+          <button type="button" className={currentPath === '/orders' ? 'nav-item active' : 'nav-item'} onClick={() => navigate(studentUser ? '/orders' : '/login')}>
             <ClockIcon className="nav-icon" />
             <span className="nav-label">My Orders</span>
             <span className="order-count">{orders.length}</span>
+          </button>
+
+          <button type="button" className={currentPath === '/announcements' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/announcements')}>
+            <span className="nav-icon"><BellIcon className="nav-icon" /></span>
+            <span className="nav-label">Announcements</span>
           </button>
 
           <button type="button" className={currentPath === '/about' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/about')}>
@@ -472,7 +542,7 @@ function App() {
         </nav>
 
         <div className="header-actions">
-          <button type="button" className="cart-pill" onClick={() => navigate('/cart')}>
+          <button type="button" className="cart-pill" onClick={() => navigate(studentUser ? '/cart' : '/login')}>
             <span className="cart-icon-wrap">
               <span className="cart-number">{cartCount}</span>
               <span className="cart-symbol">🛒</span>
@@ -491,7 +561,7 @@ function App() {
             }}
           >
             <span className="user-avatar">{(studentUser?.name || 'G').charAt(0).toUpperCase()}</span>
-            <span className="user-label">{studentUser ? studentUser.name : 'Login'}</span>
+            {studentUser ? <span className="user-label">{studentUser.name}</span> : null}
             <ArrowRightIcon className="user-arrow" />
           </button>
         </div>

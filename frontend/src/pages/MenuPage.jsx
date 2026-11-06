@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 
 const categories = ['All', 'Burgers', 'Pizza', 'Meals', 'Drinks'];
+const hiddenMenuNames = new Set(['Loaded Fries', 'Pepperoni Pizza', 'BBQ Chicken Pizza']);
+const sidebarDisplayItems = ['Classic Beef Burger', 'Chicken Burger Deluxe', 'Veggie Burger', 'Margherita Pizza', 'Chicken Curry Bowl', 'Mango Juice', 'Chicken Wrap'];
 
 const getItemCategory = (item) => {
   const name = (item.name || '').toLowerCase();
@@ -37,7 +39,7 @@ const getFallbackImage = (item) => {
   return categoryImages[category] || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80';
 };
 
-function MenuPage({ navigate, addToCart, menuItems = [] }) {
+function MenuPage({ navigate, addToCart, menuItems = [], announcements = [] }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showFilters, setShowFilters] = useState(true);
   const [cartPopupItem, setCartPopupItem] = useState(null);
@@ -46,7 +48,9 @@ function MenuPage({ navigate, addToCart, menuItems = [] }) {
   const filteredItems = useMemo(() => {
     if (!menuItems.length) return [];
 
-    const visibleItems = menuItems.filter((item) => item.available !== false);
+    const visibleItems = menuItems
+      .filter((item) => item.available !== false)
+      .filter((item) => !hiddenMenuNames.has(item.name));
     const keyword = searchTerm.trim().toLowerCase();
 
     const itemsByCategory = selectedCategory === 'All'
@@ -86,10 +90,10 @@ function MenuPage({ navigate, addToCart, menuItems = [] }) {
           </div>
         </div>
 
-        <div className="category-section-title">Coming soon</div>
+        <div className="category-section-title">Main menu coming soon</div>
         <div className="category-list compact">
-          {['Ice Cream', 'Pie', 'Meat', 'Burgers', 'Pizza', 'Drinks'].map((item) => (
-            <div key={item} className="category-pill light static">
+          {sidebarDisplayItems.map((item) => (
+            <div key={item} className="category-pill light static" aria-disabled="true">
               {item}
             </div>
           ))}
@@ -104,7 +108,15 @@ function MenuPage({ navigate, addToCart, menuItems = [] }) {
         </div>
       </aside>
 
-      <div className="menu-main-panel">
+      <div className="menu-main-panel">        {announcements.length > 0 && (
+          <div className="student-announcement-banner">
+            <div className="student-announcement-tag">Announcement</div>
+            <div>
+              <strong>{announcements[0].title}</strong>
+              <p>{announcements[0].text}</p>
+            </div>
+          </div>
+        )}
         <div className="menu-toolbar">
           <input
             type="text"
@@ -114,7 +126,7 @@ function MenuPage({ navigate, addToCart, menuItems = [] }) {
             placeholder="Search by food name, category, or keyword..."
             aria-label="Search menu items"
           />
-          <button type="button" className="cart-cta" onClick={() => navigate('/cart')}>Best Offer Deals</button>
+          <button type="button" className="cart-cta" onClick={() => navigate('/menu')}>Campus menu preview</button>
         </div>
 
         <div className="menu-head-row">

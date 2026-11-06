@@ -30,6 +30,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceEdits, setPriceEdits] = useState({});
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [announcementDraft, setAnnouncementDraft] = useState({ title: '', text: '' });
   const menuFormRef = useRef(null);
 
   const setMenuItems = (updater) => {
@@ -88,6 +89,8 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
 
     return () => window.clearInterval(intervalId);
   }, [adminUser]);
+
+  const latestAnnouncement = Array.isArray(announcements) && announcements.length ? announcements[0] : null;
 
   const stats = useMemo(() => {
     const revenue = orders.reduce((sum, order) => sum + Number(order.total), 0);
@@ -297,6 +300,37 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
     }
   };
 
+  const handleAnnouncementSave = () => {
+    const title = announcementDraft.title.trim();
+    const text = announcementDraft.text.trim();
+
+    if (!title || !text) {
+      showMessage('Enter both an announcement title and message.', 'error');
+      return;
+    }
+
+    if (!setAnnouncements) {
+      return;
+    }
+
+    setAnnouncements((current = []) => {
+      const nextAnnouncements = Array.isArray(current) ? current : [];
+      const cleaned = nextAnnouncements.filter((entry) => entry.title !== title);
+      return [{ id: Date.now(), title, text }, ...cleaned];
+    });
+    setAnnouncementDraft({ title: '', text: '' });
+    showMessage('Announcement saved.', 'success');
+  };
+
+  const handleAnnouncementDelete = (announcementId) => {
+    if (!setAnnouncements) {
+      return;
+    }
+
+    setAnnouncements((current = []) => (Array.isArray(current) ? current.filter((entry) => entry.id !== announcementId) : []));
+    showMessage('Announcement removed.', 'info');
+  };
+
   const handleLogout = () => {
     setAdminUser(null);
     showMessage('Admin logged out.', 'info');
@@ -338,7 +372,6 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
           <h1>Richfield Campus</h1>
         </div>
         <div className="admin-header-actions">
-          <button type="button" className="secondary-btn" onClick={handleLogout}>Logout</button>
           <button type="button" className="primary-btn hero-action" onClick={focusAddItemForm}>+ Add New Item</button>
         </div>
       </div>
@@ -352,6 +385,14 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
         <h1 className="hero-title">Cafeteria Dashboard</h1>
       </section>
 
+      {latestAnnouncement && (
+        <section className="announcement-banner-panel">
+          <div className="admin-tag">Announcement</div>
+          <h2>{latestAnnouncement.title}</h2>
+          <p>{latestAnnouncement.text}</p>
+        </section>
+      )}
+
       <div className="hero-subgrid">
         {stats.map((stat) => (
           <div key={stat.label} className="stat-card">
@@ -363,7 +404,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
       </div>
 
       <div className="admin-tabs">
-        {['Live Orders Queue', 'Manage Menu & Prices', 'Student Accounts'].map((tab) => (
+        {['Live Orders Queue', 'Manage Menu & Prices', 'Student Accounts', 'Announcements'].map((tab) => (
           <button
             key={tab}
             type="button"
@@ -509,6 +550,50 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
                 <input type="text" name="newPassword" placeholder="New password" value={passwordForm.newPassword} onChange={handlePasswordFormChange} />
                 <button type="submit" className="primary-btn">Reset password</button>
               </form>
+            </>
+          )}
+
+          {activeTab === 'Announcements' && (
+            <>
+              <div className="section-header">
+                <h2 className="section-title">Announcements</h2>
+              </div>
+
+              <div className="admin-form">
+                <h3>Add or edit announcement</h3>
+                <input
+                  type="text"
+                  value={announcementDraft.title}
+                  onChange={(event) => setAnnouncementDraft((current) => ({ ...current, title: event.target.value }))}
+                  placeholder="Announcement title"
+                />
+                <textarea
+                  rows="3"
+                  value={announcementDraft.text}
+                  onChange={(event) => setAnnouncementDraft((current) => ({ ...current, text: event.target.value }))}
+                  placeholder="Announcement message"
+                />
+                <button type="button" className="primary-btn" onClick={handleAnnouncementSave}>Save announcement</button>
+              </div>
+
+              <div className="announcement-list" style={{ marginTop: '1rem' }}>
+                {(announcements || []).length === 0 ? (
+                  <p className="empty-state-copy">No announcements yet.</p>
+                ) : (
+                  (announcements || []).map((item) => (
+                    <div className="announcement-item" key={item.id || item.title}>
+                      <span className="announcement-tag">Live</span>
+                      <div>
+                        <h3>{item.title}</h3>
+                        <p>{item.text}</p>
+                      </div>
+                      <button type="button" className="small-action danger" onClick={() => handleAnnouncementDelete(item.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </>
           )}
         </aside>
