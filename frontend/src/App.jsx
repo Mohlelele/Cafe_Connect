@@ -18,7 +18,10 @@ const STORAGE_KEYS = {
   student: 'cafe-connect-student',
   admin: 'cafe-connect-admin',
   token: 'cafe-connect-auth-token',
+  announcements: 'cafe-connect-announcements',
 };
+
+const defaultAnnouncements = [];
 
 function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
@@ -44,6 +47,14 @@ function App() {
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
+    }
+  });
+  const [announcements, setAnnouncements] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.announcements);
+      return saved ? JSON.parse(saved) : defaultAnnouncements;
+    } catch {
+      return defaultAnnouncements;
     }
   });
   const [studentUser, setStudentUser] = useState(() => {
@@ -83,7 +94,8 @@ function App() {
       const nextOrders = Array.isArray(response) ? response : [];
 
       setOrders(nextOrders.map((order) => ({
-        id: order.orderNumber || order.id,
+        id: order.orderNumber || order.order_number || order.id,
+        orderNumber: order.orderNumber || order.order_number || order.id,
         time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now',
         customer: order.customerName || studentUser.name,
         status: order.status || 'Pending',
@@ -117,6 +129,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('cafe-connect-orders', JSON.stringify(orders));
   }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.announcements, JSON.stringify(announcements));
+  }, [announcements]);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -331,13 +347,35 @@ function App() {
     if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
     if (currentPath === '/orders') return <OrdersPage navigate={navigate} orders={orders} studentUser={studentUser} />;
     if (currentPath === '/about') return <AboutPage navigate={navigate} />;
-    if (currentPath === '/announcements') return <AnnouncementsPage navigate={navigate} />;
+    if (currentPath === '/announcements') return <AnnouncementsPage navigate={navigate} announcements={announcements} setAnnouncements={setAnnouncements} isAdmin={Boolean(adminUser)} />;
+    if (currentPath === '/customer-view') {
+      const customerHistory = orders.length ? orders : [{ id: 'No orders yet', customer: 'No customer history available', time: '—', status: 'No orders', items: [], total: 0, payment: 'N/A' }];
+      return (
+        <div className="content-page">
+          <div className="content-card wide-card">
+            <h1>Customer View</h1>
+            <p className="section-subtitle">Order history and customer activity</p>
+            <div className="announcement-list">
+              {customerHistory.map((order) => (
+                <div className="announcement-item" key={order.id || `${order.customer}-${order.time}`}>
+                  <span className="announcement-tag">{order.status || 'Order'}</span>
+                  <div>
+                    <h3>{order.customer || 'Customer'}</h3>
+                    <p>{order.orderNumber || order.id} • {order.items.length ? `${order.items.length} item(s)` : 'No items'} • Total: R {Number(order.total || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
     if (currentPath === '/cart') return <CartPage cart={cart} navigate={navigate} updateCartItem={updateCartItem} onCheckout={placeOrder} studentUser={studentUser} />;
     if (currentPath === '/login') return <LoginPage navigate={navigate} onLogin={handleStudentLogin} showMessage={showMessage} />;
     if (currentPath === '/register') return <RegisterPage navigate={navigate} onRegister={() => {}} showMessage={showMessage} />;
     if (currentPath === '/forgot-password') return <ForgotPasswordPage navigate={navigate} showMessage={showMessage} />;
-    if (currentPath === '/admin-login') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} />;
-    if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} />;
+    if (currentPath === '/admin-login') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} announcements={announcements} setAnnouncements={setAnnouncements} />;
+    if (currentPath === '/admin') return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} announcements={announcements} setAnnouncements={setAnnouncements} />;
     return <HomePage navigate={navigate} menuItems={menuItems} addToCart={addToCart} />;
   };
 
@@ -360,10 +398,10 @@ function App() {
             <button type="button" className={currentPath === '/admin' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/admin')}>
               <span className="nav-label">Dashboard</span>
             </button>
-            <button type="button" className="nav-item" onClick={() => navigate('/menu')}>
-              <span className="nav-label">View Menu</span>
+            <button type="button" className="nav-item disabled" aria-disabled="true" disabled>
+              <span className="nav-label">Main menu coming soon</span>
             </button>
-            <button type="button" className="nav-item" onClick={() => navigate('/')}>
+            <button type="button" className="nav-item" onClick={() => navigate('/customer-view')}>
               <span className="nav-label">Customer View</span>
             </button>
           </nav>
@@ -401,7 +439,7 @@ function App() {
           <button type="button" className={currentPath === '/orders' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/orders')}>
             <ClockIcon className="nav-icon" />
             <span className="nav-label">My Orders</span>
-            <span className="order-count">{cartCount || 1}</span>
+            <span className="order-count">{orders.length}</span>
           </button>
 
           <button type="button" className={currentPath === '/about' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/about')}>

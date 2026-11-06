@@ -19,7 +19,7 @@ const initialPasswordForm = {
   newPassword: '',
 };
 
-function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: sharedMenuItems = [], setMenuItems: setSharedMenuItems }) {
+function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: sharedMenuItems = [], setMenuItems: setSharedMenuItems, announcements = [], setAnnouncements }) {
   const [menuItems, setMenuItemsState] = useState(sharedMenuItems);
   const [orders, setOrders] = useState([]);
   const [students, setStudents] = useState([]);
@@ -29,7 +29,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
   const [activeTab, setActiveTab] = useState('Live Orders Queue');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceEdits, setPriceEdits] = useState({});
-  const [loginForm, setLoginForm] = useState({ email: 'admin@cafeconnect.com', password: 'admin123' });
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const menuFormRef = useRef(null);
 
   const setMenuItems = (updater) => {
@@ -63,6 +63,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
 
       setOrders((ordersResponse || []).map((order) => ({
         id: order.order_id || order.id,
+        orderNumber: order.order_number || order.orderNumber || order.order_id || order.id,
         customer: order.customer_name || order.customer || 'Student',
         item: order.item_name || (Array.isArray(order.items) && order.items.length ? order.items.map((entry) => entry.name || entry.item_name || 'item').join(', ') : 'Cafe order'),
         total: Number(order.total_amount || order.total || 0),
@@ -190,13 +191,16 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
   };
 
   const updateMenuPrice = async (id) => {
-    const value = Number(priceEdits[id]);
+    const rawValue = priceEdits[id] ?? Number(menuItems.find((entry) => entry.id === id)?.price || 0);
+    const value = Number(rawValue);
     if (!Number.isFinite(value) || value <= 0) {
       showMessage('Enter a valid price greater than zero.', 'error');
       return;
     }
 
     try {
+      const currentItem = menuItems.find((entry) => entry.id === id);
+      const previousPrice = Number(currentItem?.price || 0);
       const payload = await apiRequest(`/api/admin/menu/${id}/price`, {
         method: 'PATCH',
         body: JSON.stringify({ price: value }),
@@ -204,7 +208,9 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
 
       setMenuItems((current) => current.map((entry) => entry.id === id ? { ...entry, price: value, available: entry.available ?? true } : entry));
       setPriceEdits((current) => ({ ...current, [id]: String(value) }));
-      showMessage(payload.message || 'Price updated.', 'success');
+      const difference = value - previousPrice;
+      const changeText = difference > 0 ? `Price increased by R ${difference.toFixed(2)}.` : difference < 0 ? `Price decreased by R ${Math.abs(difference).toFixed(2)}.` : 'Price unchanged.';
+      showMessage(`${payload.message || 'Price updated.'} ${changeText}`, 'success');
     } catch (error) {
       showMessage(error.message || 'Price update failed.', 'error');
     }
@@ -381,7 +387,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
             ) : (
               orders.map((order) => (
                 <div className="order-row" key={order.id}>
-                  <strong>{`#${order.id}`}</strong>
+                  <strong>{`#${order.orderNumber || order.id}`}</strong>
                   <span>{order.customer}</span>
                   <span>{order.item}</span>
                   <div>
@@ -473,6 +479,17 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
                 />
                 <button type="submit" className="primary-btn">Save item</button>
               </form>
+
+              <div className="admin-form" style={{ marginTop: '1.5rem' }}>
+                <h3>Edit announcements</h3>
+                {(announcements.length ? announcements : [{ id: 'default', title: 'No announcements yet', text: 'Create a campus update.' }]).map((announcement) => (
+                  <div key={announcement.id || announcement.title} className="announcement-item" style={{ marginBottom: '0.75rem' }}>
+                    <strong>{announcement.title}</strong>
+                    <p>{announcement.text}</p>
+                  </div>
+                ))}
+                <button type="button" className="secondary-btn" onClick={() => navigate('/announcements')}>Open announcement board</button>
+              </div>
             </>
           )}
 

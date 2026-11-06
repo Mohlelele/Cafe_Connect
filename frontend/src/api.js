@@ -1,3 +1,11 @@
+const isLocalOrPrivateNetworkHost = (hostname) => {
+  if (!hostname) return false;
+
+  return /localhost|127\.0\.0\.1/i.test(hostname)
+    || /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/i.test(hostname)
+    || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+};
+
 export const API_URL = (() => {
   const configuredUrl = import.meta.env.VITE_API_URL;
 
@@ -11,7 +19,7 @@ export const API_URL = (() => {
 
   const { protocol, hostname } = window.location;
 
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  if (isLocalOrPrivateNetworkHost(hostname)) {
     return `${protocol}//${hostname}:5000`;
   }
 
@@ -24,9 +32,14 @@ const shouldUseDemoMode = () => {
   }
 
   const hasConfiguredApi = !!import.meta.env.VITE_API_URL && String(import.meta.env.VITE_API_URL).trim() !== '';
+  const isLocalOrPrivate = isLocalOrPrivateNetworkHost(window.location.hostname);
   const isLiveVercelHost = /vercel\.app$/i.test(window.location.hostname) && !/localhost/i.test(window.location.hostname);
 
-  return !hasConfiguredApi || isLiveVercelHost;
+  if (hasConfiguredApi || isLocalOrPrivate) {
+    return false;
+  }
+
+  return isLiveVercelHost;
 };
 
 const DEMO_USERS = {
@@ -275,6 +288,14 @@ const demoResponseFor = (endpoint, options = {}) => {
 
   if (endpoint.startsWith('/api/admin/orders/')) {
     if (endpoint.includes('/status')) {
+      const orderId = endpoint.split('/')[4];
+      const orders = getStoredDemoOrders();
+      const order = orders.find((entry) => String(entry.id) === String(orderId));
+      if (order) {
+        order.status = data.status || order.status;
+        saveDemoOrders(orders);
+        return { message: 'Order status updated.', order };
+      }
       return { message: 'Order status updated.' };
     }
 

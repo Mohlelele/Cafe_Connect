@@ -87,59 +87,31 @@ function MenuPage({ navigate, addToCart, menuItems = [] }) {
           </div>
         </div>
 
-        <div className="category-list">
-          {['Veg. Mania', 'Sandwich', 'Club Veg.', 'Veg. Pizza'].map((item) => (
-            <button
-              type="button"
-              key={item}
-              className={selectedCategory === item ? 'category-pill active' : 'category-pill'}
-              onClick={() => setSelectedCategory(item === 'Veg. Mania' ? 'Main Course' : item)}
-            >
+        <div className="category-section-title">Coming Soon</div>
+        <div className="category-list compact">
+          {[
+            'Rib Burger',
+            'Chicken Burger Deluxe',
+            'Veggie Burger',
+            'Loaded Chicken Wrap',
+            'Cheesy Fries',
+            'Crunchy Chicken Bites',
+            'Loaded Nachos',
+            'Cafe Latte',
+            'Mango Smoothie',
+            'Iced Mocha',
+            'Classic Vanilla Cup',
+            'Chocolate Sundae',
+            'Strawberry Scoop',
+          ].map((item) => (
+            <div key={item} className="category-pill light static muted" aria-disabled="true">
               {item}
-            </button>
+            </div>
           ))}
         </div>
 
-        <div className="category-section-title">Snacks</div>
         <div className="category-list compact">
-          {['Burger', 'Wraps', 'French Fries'].map((item) => (
-            <button
-              type="button"
-              className={selectedCategory === 'Snacks' ? 'category-pill light active' : 'category-pill light'}
-              key={item}
-              onClick={() => setSelectedCategory('Snacks')}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-
-        <div className="category-section-title">Beverages</div>
-        <div className="category-list compact">
-          {['Coffee', 'Smoothies', 'Tea'].map((item) => (
-            <button
-              type="button"
-              className={selectedCategory === 'Beverages' ? 'category-pill light active' : 'category-pill light'}
-              key={item}
-              onClick={() => setSelectedCategory('Beverages')}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-
-        <div className="category-section-title">Ice Cream</div>
-        <div className="category-list compact">
-          {['Cone', 'Cup', 'Classic Flavours'].map((item) => (
-            <button
-              type="button"
-              className={selectedCategory === 'Cone & Cup Ice Cream' ? 'category-pill light active' : 'category-pill light'}
-              key={item}
-              onClick={() => setSelectedCategory('Cone & Cup Ice Cream')}
-            >
-              {item}
-            </button>
-          ))}
+          <div className="category-pill light static muted" aria-disabled="true">Main menu coming soon</div>
         </div>
 
         <div className="brand-footer">

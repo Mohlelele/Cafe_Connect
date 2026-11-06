@@ -8,7 +8,8 @@
     "start": "npm --prefix server run start"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0"
+    "concurrently": "^9.2.0",
+    "playwright": "^1.65.0"
   },
   "dependencies": {
     "mongoose": "^9.11.4",

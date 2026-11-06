@@ -36,7 +36,7 @@ function OrdersPage({ navigate, orders = [], studentUser }) {
             <div className="order-card-compact" key={order.id}>
               <div className="order-top-row">
                 <div className="order-meta">
-                  <span className="order-code">{order.id}</span>
+                  <span className="order-code">{order.orderNumber || order.id}</span>
                   <span className="order-time">({order.time})</span>
                   <span className="customer-name">{order.customer}</span>
                 </div>
