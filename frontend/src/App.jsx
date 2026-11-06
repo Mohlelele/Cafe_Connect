@@ -11,7 +11,6 @@ import MenuPage from './pages/MenuPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminPage from './pages/AdminPage';
 import AboutPage from './pages/AboutPage';
-import AnnouncementsPage from './pages/AnnouncementsPage';
 import CartPage from './pages/CartPage';
 
 const STORAGE_KEYS = {
@@ -371,7 +370,6 @@ function App() {
     if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
     if (currentPath === '/orders') return <OrdersPage navigate={navigate} orders={orders} studentUser={studentUser} />;
     if (currentPath === '/about') return <AboutPage navigate={navigate} />;
-    if (currentPath === '/announcements') return <AnnouncementsPage navigate={navigate} announcements={announcements} setAnnouncements={setAnnouncements} isAdmin={Boolean(adminUser)} />;
     if (currentPath === '/customer-view') {
       const customerHistory = orders.length ? orders : [{ id: 'No orders yet', customer: 'No customer history available', time: '—', status: 'No orders', items: [], total: 0, payment: 'N/A' }];
       return (
@@ -471,9 +469,6 @@ function App() {
             <span className="nav-label">About</span>
           </button>
 
-          <button type="button" className={currentPath === '/announcements' ? 'nav-item active' : 'nav-item'} onClick={() => navigate('/announcements')}>
-            <span className="nav-label">Announcements</span>
-          </button>
         </nav>
 
         <div className="header-actions">

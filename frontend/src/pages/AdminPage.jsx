@@ -481,16 +481,6 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
                 <button type="submit" className="primary-btn">Save item</button>
               </form>
 
-              <div className="admin-form" style={{ marginTop: '1.5rem' }}>
-                <h3>Edit announcements</h3>
-                {(announcements.length ? announcements : [{ id: 'default', title: 'No announcements yet', text: 'Create a campus update.' }]).map((announcement) => (
-                  <div key={announcement.id || announcement.title} className="announcement-item" style={{ marginBottom: '0.75rem' }}>
-                    <strong>{announcement.title}</strong>
-                    <p>{announcement.text}</p>
-                  </div>
-                ))}
-                <button type="button" className="secondary-btn" onClick={() => navigate('/announcements')}>Open announcement board</button>
-              </div>
             </>
           )}
 

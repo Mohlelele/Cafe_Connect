@@ -86,9 +86,9 @@ function MenuPage({ navigate, addToCart, menuItems = [] }) {
           </div>
         </div>
 
-        <div className="category-section-title">Popular Picks</div>
+        <div className="category-section-title">Coming soon</div>
         <div className="category-list compact">
-          {['Coming soon'].map((item) => (
+          {['Ice Cream', 'Pie', 'Meat', 'Burgers', 'Pizza', 'Drinks'].map((item) => (
             <div key={item} className="category-pill light static">
               {item}
             </div>

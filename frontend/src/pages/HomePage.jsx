@@ -2,7 +2,7 @@ import { ClipboardIcon, UtensilsIcon, WalletIcon } from '../components/Icons';
 
 function HomePage({ navigate, menuItems, addToCart }) {
   const featured = Array.isArray(menuItems) ? menuItems.filter(Boolean).slice(0, 3) : [];
-  const hasFeaturedItems = featured.length > 0;
+  const heroImage = featured[0]?.image || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80';
 
   return (
     <div className="home-page">
@@ -18,7 +18,7 @@ function HomePage({ navigate, menuItems, addToCart }) {
         </div>
 
         <div className="hero-visual">
-          <img src={featured[0].image} alt={featured[0].name} />
+          <img src={heroImage} alt="Cafe Connect feature" />
         </div>
       </section>
 
@@ -44,32 +44,19 @@ function HomePage({ navigate, menuItems, addToCart }) {
 
       <div className="featured-wrap">
         <div className="section-head">
-          <h2>Popular picks</h2>
+          <h2>Coming soon</h2>
           <button type="button" className="chip-button" onClick={() => navigate('/menu')}>View menu</button>
         </div>
 
-        {hasFeaturedItems ? (
-          <div className="featured-grid">
-            {featured.map((item) => (
-              <article className="feature-card" key={item.id}>
-                <img src={item.image} alt={item.name} />
-                <div className="feature-card-body">
-                  <h3>{item.name}</h3>
-                  <p>{item.description}</p>
-                  <div className="feature-price-row">
-                    <strong>R {Number(item.price || 0).toFixed(2)}</strong>
-                    <button type="button" className="small-orange" onClick={() => addToCart(item)}>Add</button>
-                  </div>
-                </div>
-              </article>
+        <div className="coming-soon-card">
+          <h3>Fresh menu updates are on the way.</h3>
+          <p>Look out for ice cream, pie, meat, burgers, pizza, and drinks.</p>
+          <div className="soon-tag-list">
+            {['Ice cream', 'Pie', 'Meat', 'Burgers', 'Pizza', 'Drinks'].map((item) => (
+              <span key={item} className="soon-tag">{item}</span>
             ))}
           </div>
-        ) : (
-          <div className="coming-soon-card">
-            <h3>Coming soon</h3>
-            <p>Our featured items are being refreshed. Check back soon.</p>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
