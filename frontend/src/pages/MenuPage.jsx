@@ -1,38 +1,37 @@
 import { useMemo, useState } from 'react';
 
-const categories = ['All', 'Snacks', 'Main Course', 'Desserts', 'Beverages', 'Cone & Cup Ice Cream'];
+const categories = ['All', 'Burgers', 'Pizza', 'Meals', 'Drinks'];
 
 const getItemCategory = (item) => {
   const name = (item.name || '').toLowerCase();
 
-  if (name.includes('pizza') || name.includes('burger') || name.includes('rice') || name.includes('curry') || name.includes('wrap') || name.includes('pasta')) {
-    return 'Main Course';
+  if (name.includes('burger')) {
+    return 'Burgers';
   }
 
-  if (name.includes('smoothie') || name.includes('tea') || name.includes('coffee') || name.includes('juice') || name.includes('latte')) {
-    return 'Beverages';
+  if (name.includes('pizza')) {
+    return 'Pizza';
   }
 
-  if (name.includes('ice cream') || name.includes('cone') || name.includes('cup') || name.includes('gelato')) {
-    return 'Cone & Cup Ice Cream';
+  if (name.includes('wrap') || name.includes('chicken bucket') || name.includes('curry') || name.includes('meal') || name.includes('pie') || name.includes('fries') || name.includes('loaded')) {
+    return 'Meals';
   }
 
-  if (name.includes('muffin') || name.includes('cake') || name.includes('cookie') || name.includes('dessert')) {
-    return 'Desserts';
+  if (name.includes('juice') || name.includes('coffee') || name.includes('latte') || name.includes('cappuccino')) {
+    return 'Drinks';
   }
 
-  return 'Snacks';
+  return 'Meals';
 };
 
 const getFallbackImage = (item) => {
   const category = getItemCategory(item);
 
   const categoryImages = {
-    Snacks: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=80',
-    'Main Course': 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
-    Desserts: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=900&q=80',
-    Beverages: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80',
-    'Cone & Cup Ice Cream': 'https://images.unsplash.com/photo-1570197788417-0e82375c9371?auto=format&fit=crop&w=900&q=80',
+    Burgers: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80',
+    Pizza: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
+    Meals: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
+    Drinks: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80',
   };
 
   return categoryImages[category] || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80';
@@ -87,31 +86,13 @@ function MenuPage({ navigate, addToCart, menuItems = [] }) {
           </div>
         </div>
 
-        <div className="category-section-title">Coming Soon</div>
+        <div className="category-section-title">Popular Picks</div>
         <div className="category-list compact">
-          {[
-            'Rib Burger',
-            'Chicken Burger Deluxe',
-            'Veggie Burger',
-            'Loaded Chicken Wrap',
-            'Cheesy Fries',
-            'Crunchy Chicken Bites',
-            'Loaded Nachos',
-            'Cafe Latte',
-            'Mango Smoothie',
-            'Iced Mocha',
-            'Classic Vanilla Cup',
-            'Chocolate Sundae',
-            'Strawberry Scoop',
-          ].map((item) => (
-            <div key={item} className="category-pill light static muted" aria-disabled="true">
+          {['Coming soon'].map((item) => (
+            <div key={item} className="category-pill light static">
               {item}
             </div>
           ))}
-        </div>
-
-        <div className="category-list compact">
-          <div className="category-pill light static muted" aria-disabled="true">Main menu coming soon</div>
         </div>
 
         <div className="brand-footer">

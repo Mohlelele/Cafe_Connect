@@ -23,7 +23,9 @@ function AnnouncementsPage({ announcements = [], setAnnouncements, isAdmin = fal
       <div className="content-card wide-card">
         <h1>Announcements</h1>
         <div className="announcement-list">
-          {announcements.map((item) => (
+          {announcements.length === 0 ? (
+            <div className="empty-state-copy">No announcements yet. Add one from the admin panel.</div>
+          ) : announcements.map((item) => (
             <div className="announcement-item" key={item.id || item.title}>
               <span className="announcement-tag">New</span>
               <div>

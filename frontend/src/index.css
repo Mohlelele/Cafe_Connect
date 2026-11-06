@@ -308,11 +308,11 @@ img {
 }
 
 .admin-dashboard-shell {
-  background: linear-gradient(180deg, #0f1f2f 0%, #162b42 100%);
-  border: 1px solid rgba(99, 132, 167, 0.25);
+  background: linear-gradient(180deg, #edf5ff 0%, #eaf3ff 100%);
+  border: 1px solid rgba(126, 158, 204, 0.28);
   border-radius: 30px;
   padding: 18px;
-  box-shadow: 0 18px 28px rgba(10, 20, 32, 0.18);
+  box-shadow: 0 18px 28px rgba(28, 49, 74, 0.08);
 }
 
 .student-dashboard-shell {
@@ -2001,11 +2001,11 @@ img {
 }
 
 .admin-main-panel {
-  background: linear-gradient(180deg, #122d43 0%, #1a3857 100%);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, #f3f8ff 0%, #edf4ff 100%);
+  border: 1px solid rgba(100, 124, 166, 0.18);
   border-radius: 28px;
   padding: 22px 24px;
-  box-shadow: 0 10px 26px rgba(13, 28, 42, 0.16);
+  box-shadow: 0 10px 26px rgba(28, 49, 74, 0.08);
 }
 
 .admin-main-panel .hero-topline {
@@ -2014,6 +2014,11 @@ img {
 
 .admin-main-panel .hero-title {
   margin: 0 0 0;
+  color: var(--navy);
+}
+
+.admin-main-panel .location-badge {
+  color: #34577d;
 }
 
 .admin-layout {

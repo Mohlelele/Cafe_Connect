@@ -1,7 +1,8 @@
 import { ClipboardIcon, UtensilsIcon, WalletIcon } from '../components/Icons';
 
 function HomePage({ navigate, menuItems, addToCart }) {
-  const featured = menuItems.slice(0, 3);
+  const featured = Array.isArray(menuItems) ? menuItems.filter(Boolean).slice(0, 3) : [];
+  const hasFeaturedItems = featured.length > 0;
 
   return (
     <div className="home-page">
@@ -47,21 +48,28 @@ function HomePage({ navigate, menuItems, addToCart }) {
           <button type="button" className="chip-button" onClick={() => navigate('/menu')}>View menu</button>
         </div>
 
-        <div className="featured-grid">
-          {featured.map((item) => (
-            <article className="feature-card" key={item.id}>
-              <img src={item.image} alt={item.name} />
-              <div className="feature-card-body">
-                <h3>{item.name}</h3>
-                <p>{item.description}</p>
-                <div className="feature-price-row">
-                  <strong>R {item.price.toFixed(2)}</strong>
-                  <button type="button" className="small-orange" onClick={() => addToCart(item)}>Add</button>
+        {hasFeaturedItems ? (
+          <div className="featured-grid">
+            {featured.map((item) => (
+              <article className="feature-card" key={item.id}>
+                <img src={item.image} alt={item.name} />
+                <div className="feature-card-body">
+                  <h3>{item.name}</h3>
+                  <p>{item.description}</p>
+                  <div className="feature-price-row">
+                    <strong>R {Number(item.price || 0).toFixed(2)}</strong>
+                    <button type="button" className="small-orange" onClick={() => addToCart(item)}>Add</button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="coming-soon-card">
+            <h3>Coming soon</h3>
+            <p>Our featured items are being refreshed. Check back soon.</p>
+          </div>
+        )}
       </div>
     </div>
   );

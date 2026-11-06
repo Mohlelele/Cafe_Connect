@@ -25,14 +25,7 @@ const defaultAnnouncements = [];
 
 function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
-  const [menuItems, setMenuItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cafe-connect-menu');
-      return saved ? JSON.parse(saved) : menuItemsData;
-    } catch {
-      return menuItemsData;
-    }
-  });
+  const [menuItems, setMenuItems] = useState(() => menuItemsData);
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('cafe-connect-cart');
@@ -81,7 +74,7 @@ function App() {
     }
   });
   const [flashMessage, setFlashMessage] = useState({ message: '', tone: 'success' });
-  const isAdminView = currentPath.startsWith('/admin');
+  const isAdminView = currentPath.startsWith('/admin') || currentPath === '/customer-view';
 
   const fetchStudentOrders = useCallback(async () => {
     if (!studentUser) {
@@ -125,6 +118,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('cafe-connect-menu', JSON.stringify(menuItems));
   }, [menuItems]);
+
+  const clearStaleMenuCache = () => {
+    localStorage.removeItem('cafe-connect-menu');
+  };
 
   useEffect(() => {
     localStorage.setItem('cafe-connect-orders', JSON.stringify(orders));
@@ -198,6 +195,14 @@ function App() {
     if (currentPath === '/' && adminUser) {
       navigate('/admin');
     }
+
+    if (adminUser && ['/menu', '/orders', '/cart', '/about', '/announcements', '/login', '/register', '/forgot-password'].includes(currentPath)) {
+      navigate('/admin');
+    }
+
+    if (studentUser && ['/admin', '/admin-login'].includes(currentPath)) {
+      navigate('/menu');
+    }
   }, [studentUser, adminUser, currentPath]);
 
   useEffect(() => {
@@ -227,6 +232,8 @@ function App() {
   };
 
   const handleStudentLogin = (user, token = '') => {
+    clearStaleMenuCache();
+    setMenuItems(menuItemsData);
     setStudentUser(user);
     setAdminUser(null);
     setAuthToken(token);
@@ -351,6 +358,14 @@ function App() {
 
     if (['/menu', '/orders', '/cart'].includes(currentPath) && !studentUser && !adminUser) {
       return <WelcomePage navigate={navigate} />;
+    }
+
+    if (adminUser && ['/menu', '/orders', '/cart', '/about', '/announcements', '/login', '/register', '/forgot-password'].includes(currentPath)) {
+      return <AdminPage navigate={navigate} adminUser={adminUser} setAdminUser={handleAdminLogin} showMessage={showMessage} menuItems={menuItems} setMenuItems={setMenuItems} announcements={announcements} setAnnouncements={setAnnouncements} />;
+    }
+
+    if (studentUser && ['/admin', '/admin-login'].includes(currentPath)) {
+      return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
     }
 
     if (currentPath === '/menu') return <MenuPage navigate={navigate} addToCart={addToCart} cartCount={cartCount} menuItems={menuItems} />;
