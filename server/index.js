@@ -5,6 +5,7 @@ require('dotenv').config();
 const sgMail = require('@sendgrid/mail');
 const connectDB = require('./db');
 const { hashPassword, verifyPassword } = require('./auth');
+const { User, MenuItem, Order } = require('./models');
 
 const sendgridApiKey = process.env.SENDGRID_API_KEY;
 const sendgridFromEmail = process.env.SENDGRID_FROM_EMAIL || 'no-reply@cafeconnect.com';
@@ -81,6 +82,41 @@ const activeSessions = new Map();
 const passwordResetCodes = new Map();
 let isDbConnected = false;
 
+const seedDatabaseDefaults = async () => {
+  if (!isDbConnected) {
+    return;
+  }
+
+  const adminExisting = await User.findOne({ email: DEFAULT_ADMIN_EMAIL }).lean();
+  if (!adminExisting) {
+    await User.create({
+      name: 'Cafe Connect Admin',
+      email: DEFAULT_ADMIN_EMAIL,
+      password: await hashPassword(DEFAULT_ADMIN_PASSWORD),
+    });
+  }
+
+  const studentExisting = await User.findOne({ email: DEFAULT_STUDENT_EMAIL }).lean();
+  if (!studentExisting) {
+    await User.create({
+      name: 'Mathapelo Mokoena',
+      email: DEFAULT_STUDENT_EMAIL,
+      password: await hashPassword(DEFAULT_STUDENT_PASSWORD),
+    });
+  }
+
+  const menuCount = await MenuItem.countDocuments();
+  if (menuCount === 0) {
+    await MenuItem.insertMany(demoMenu.map((item) => ({
+      item_name: item.item_name,
+      description: item.description,
+      price: Number(item.price || 0),
+      availability: item.availability ?? true,
+      image_url: item.image_url || '',
+    })));
+  }
+};
+
 app.use(cors({
   origin: (origin, callback) => {
     if (isAllowedOrigin(origin)) {
@@ -112,7 +148,90 @@ const normalizeUser = (user) => ({
   email: user.email,
 });
 
+const normalizeOrderStatus = (status) => {
+  const value = String(status ?? 'Pending').trim();
+  const normalized = value || 'Pending';
+  const lowered = normalized.toLowerCase();
+
+  if (['prep', 'preparing', 'pending', 'in progress', 'in-progress', 'queued'].includes(lowered)) {
+    return 'Pending';
+  }
+
+  if (['ready', 'completed', 'done'].includes(lowered)) {
+    return 'Ready';
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+};
+
 const respondWithMenu = (items = []) => items.map(normalizeMenuItem);
+
+const serializeOrder = (order = {}) => ({
+  id: order.id || order._id?.toString?.() || order.order_id,
+  orderNumber: order.orderNumber || order.order_number || `CC-${order._id || order.id || Date.now()}`,
+  customerName: order.customerName || order.customer_name || 'Student',
+  studentId: order.studentId || order.student_id || order.studentId,
+  totalAmount: Number(order.totalAmount || order.total_amount || 0),
+  paymentMethod: order.paymentMethod || order.payment_method || 'Cash',
+  status: normalizeOrderStatus(order.status || order.order_status || 'Pending'),
+  items: Array.isArray(order.items) ? order.items.map((item) => ({
+    name: item.name || item.item_name || 'Item',
+    item_name: item.item_name || item.name || 'Item',
+    quantity: Number(item.quantity || 1),
+    price: Number(item.price || item.item_price || 0),
+  })) : [],
+  createdAt: order.createdAt || order.created_at || new Date().toISOString(),
+});
+
+const normalizeMenuItemFromDb = (item = {}) => ({
+  id: item.menu_item_id ?? item.id,
+  item_name: item.item_name || item.name,
+  name: item.item_name || item.name,
+  description: item.description || '',
+  price: Number(item.price || 0),
+  availability: item.availability ?? true,
+  image_url: item.image_url || item.image || '',
+  image: item.image_url || item.image || '',
+});
+
+const normalizeDbOrderRows = (rows = []) => {
+  const grouped = new Map();
+
+  for (const row of rows) {
+    const key = row.id ?? row.order_id;
+    if (!key) continue;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        id: row.id ?? row.order_id,
+        orderNumber: row.orderNumber || row.order_number || `CC-${row.id ?? row.order_id}`,
+        customerName: row.customerName || row.customer_name || 'Student',
+        studentId: row.studentId ?? row.student_id,
+        totalAmount: Number(row.totalAmount || row.total_amount || 0),
+        paymentMethod: row.paymentMethod || row.payment_method || 'Cash',
+        status: normalizeOrderStatus(row.status || row.order_status || 'Pending'),
+        items: [],
+        createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+      });
+    }
+
+    const current = grouped.get(key);
+    if (row.item_name || row.name) {
+      current.items.push({
+        name: row.item_name || row.name || 'Item',
+        item_name: row.item_name || row.name || 'Item',
+        quantity: Number(row.quantity || 1),
+        price: Number(row.item_price || row.price || row.totalAmount || 0),
+      });
+    }
+  }
+
+  return [...grouped.values()].map((order) => ({
+    ...order,
+    totalAmount: Number(order.totalAmount || order.items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0)),
+    items: order.items.length ? order.items : [],
+  }));
+};
 
 const createSession = (role, user) => {
   const token = crypto.randomBytes(24).toString('hex');
@@ -180,6 +299,10 @@ app.get('/', (req, res) => {
 
 app.get('/api/menu', requireSession('student'), async (req, res) => {
   try {
+    if (isDbConnected) {
+      const items = await MenuItem.find({}).sort({ createdAt: -1 }).lean();
+      return res.json(items.map(normalizeMenuItemFromDb));
+    }
     return res.json(respondWithMenu(demoMenu));
   } catch (error) {
     console.error('Menu fetch failed:', error.message);
@@ -198,6 +321,17 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
+    if (isDbConnected) {
+      const existing = await User.findOne({ email: safeEmail }).lean();
+      if (existing) {
+        return res.status(409).json({ message: 'User already exists.' });
+      }
+
+      const passwordHash = await hashPassword(safePassword);
+      const user = await User.create({ name: safeName, email: safeEmail, password: passwordHash });
+      return res.status(201).json({ message: 'Student registered successfully.', student: normalizeUser({ id: user._id.toString(), name: user.name, email: user.email }) });
+    }
+
     const existing = demoUsers.find((user) => user.email === safeEmail);
     if (existing) {
       return res.status(409).json({ message: 'User already exists.' });
@@ -223,6 +357,21 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
+    if (isDbConnected) {
+      const user = await User.findOne({ email: safeEmail });
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid email or password.' });
+      }
+
+      const valid = await matchPassword(safePassword, user.password);
+      if (!valid) {
+        return res.status(401).json({ message: 'Invalid email or password.' });
+      }
+
+      const token = createSession('student', { id: user._id.toString(), name: user.name, email: user.email, password: user.password });
+      return res.json({ message: 'Login successful', token, user: { id: user._id.toString(), name: user.name, email: user.email } });
+    }
+
     const user = demoUsers.find((entry) => entry.email === safeEmail);
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password.' });
@@ -251,6 +400,21 @@ app.post('/api/admin/login', async (req, res) => {
   }
 
   try {
+    if (isDbConnected) {
+      const admin = await User.findOne({ email: safeEmail });
+      if (!admin || admin.email !== DEFAULT_ADMIN_EMAIL) {
+        return res.status(401).json({ message: 'Invalid admin email or password.' });
+      }
+
+      const valid = await matchPassword(safePassword, admin.password);
+      if (!valid) {
+        return res.status(401).json({ message: 'Invalid admin email or password.' });
+      }
+
+      const token = createSession('admin', { id: admin._id.toString(), name: admin.name, email: admin.email, password: admin.password });
+      return res.json({ message: 'Admin login successful', token, admin: { id: admin._id.toString(), name: admin.name, email: admin.email } });
+    }
+
     const admin = demoUsers.find((entry) => entry.email === safeEmail && entry.email === DEFAULT_ADMIN_EMAIL);
     if (!admin) {
       return res.status(401).json({ message: 'Invalid admin email or password.' });
@@ -271,6 +435,26 @@ app.post('/api/admin/login', async (req, res) => {
 
 app.get('/api/orders', requireSession('student'), async (req, res) => {
   try {
+    if (isDbConnected) {
+      const orders = await Order.find({ studentId: String(req.session.userId) }).sort({ createdAt: -1 }).lean();
+      return res.json(orders.map((order) => ({
+        id: order._id.toString(),
+        orderNumber: order.orderNumber,
+        customerName: order.customerName || req.session.name,
+        studentId: order.studentId,
+        totalAmount: Number(order.totalAmount || 0),
+        paymentMethod: order.paymentMethod || 'Cash',
+        status: normalizeOrderStatus(order.status || 'Pending'),
+        items: Array.isArray(order.items) ? order.items.map((item) => ({
+          name: item.name || item.item_name || 'Item',
+          item_name: item.item_name || item.name || 'Item',
+          quantity: Number(item.quantity || 1),
+          price: Number(item.price || 0),
+        })) : [],
+        createdAt: order.createdAt || new Date(order._id.toString()).toISOString(),
+      })));
+    }
+
     const studentOrders = demoOrders.filter((order) => String(order.studentId) === String(req.session.userId));
     return res.json(studentOrders.map((order) => ({
       id: order.id,
@@ -279,7 +463,7 @@ app.get('/api/orders', requireSession('student'), async (req, res) => {
       studentId: order.studentId,
       totalAmount: Number(order.totalAmount || 0),
       paymentMethod: order.paymentMethod || 'Cash',
-      status: order.status || 'Pending',
+      status: normalizeOrderStatus(order.status || 'Pending'),
       items: order.items || [],
       createdAt: order.createdAt || new Date(order.id).toISOString(),
     })));
@@ -296,6 +480,29 @@ app.post('/api/orders', requireSession('student'), async (req, res) => {
   }
 
   try {
+    if (isDbConnected) {
+      const student = await User.findById(req.session.userId).lean();
+      const orderNumber = `CC-${Math.floor(1000 + Math.random() * 9000)}`;
+      const totalAmount = items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+      const order = await Order.create({
+        orderNumber,
+        customerName: student?.name || req.session.name || 'Student',
+        studentId: String(req.session.userId),
+        totalAmount,
+        paymentMethod: paymentMethod || 'Cash',
+        status: 'Pending',
+        items: items.map((item) => ({
+          name: item.name || item.item_name || 'Item',
+          item_name: item.item_name || item.name || 'Item',
+          quantity: Number(item.quantity || 1),
+          price: Number(item.price || 0),
+        })),
+        createdAt: new Date(),
+      });
+
+      return res.status(201).json({ message: 'Order placed successfully.', orderNumber, totalAmount, paymentMethod: paymentMethod || 'Cash', orderId: order._id.toString() });
+    }
+
     const student = demoUsers.find((entry) => String(entry.id) === String(req.session.userId));
     const orderNumber = `CC-${Math.floor(1000 + Math.random() * 9000)}`;
     const totalAmount = items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
@@ -321,6 +528,11 @@ app.post('/api/orders', requireSession('student'), async (req, res) => {
 
 app.get('/api/admin/students', requireSession('admin'), async (req, res) => {
   try {
+    if (isDbConnected) {
+      const users = await User.find({ email: { $ne: DEFAULT_ADMIN_EMAIL } }).sort({ createdAt: -1 }).lean();
+      return res.json(users.map((user) => ({ id: user._id.toString(), name: user.name, email: user.email })));
+    }
+
     const students = demoUsers.filter((user) => user.email !== DEFAULT_ADMIN_EMAIL);
     return res.json(students.map((user) => ({ id: user.id, name: user.name, email: user.email })));
   } catch (error) {
@@ -340,6 +552,17 @@ app.post('/api/admin/students', requireSession('admin'), async (req, res) => {
   }
 
   try {
+    if (isDbConnected) {
+      const existing = await User.findOne({ email: safeEmail }).lean();
+      if (existing) {
+        return res.status(409).json({ message: 'Student already exists.' });
+      }
+
+      const passwordHash = await hashPassword(safePassword);
+      const user = await User.create({ name: safeName, email: safeEmail, password: passwordHash });
+      return res.status(201).json({ message: 'Student account created.', student: normalizeUser({ id: user._id.toString(), name: user.name, email: user.email }) });
+    }
+
     const existing = demoUsers.find((user) => user.email === safeEmail);
     if (existing) {
       return res.status(409).json({ message: 'Student already exists.' });
@@ -427,6 +650,26 @@ app.patch('/api/admin/students/:id/reset-password', requireSession('admin'), asy
 
 app.get('/api/admin/orders', requireSession('admin'), async (req, res) => {
   try {
+    if (isDbConnected) {
+      const orders = await Order.find({}).sort({ createdAt: -1 }).lean();
+      return res.json(orders.map((order) => ({
+        order_id: order._id.toString(),
+        order_number: order.orderNumber,
+        order_status: normalizeOrderStatus(order.status || 'Pending'),
+        total_amount: Number(order.totalAmount || 0),
+        customer_name: order.customerName || 'Student',
+        customer_email: null,
+        item_name: (Array.isArray(order.items) ? order.items : []).map((item) => item.name || item.item_name || 'Item').join(', ') || 'Cafe order',
+        items: Array.isArray(order.items) ? order.items.map((item) => ({
+          name: item.name || item.item_name || 'Item',
+          item_name: item.item_name || item.name || 'Item',
+          quantity: Number(item.quantity || 1),
+          price: Number(item.price || 0),
+        })) : [],
+        created_at: order.createdAt || new Date(order._id.toString()).toISOString(),
+      })));
+    }
+
     return res.json(demoOrders.map((order) => {
       const itemNames = (order.items || []).map((item) => item.name || item.item_name || `${Number(item.quantity || 1)}x item`);
       const firstItem = itemNames[0] || 'Cafe order';
@@ -436,7 +679,7 @@ app.get('/api/admin/orders', requireSession('admin'), async (req, res) => {
       return {
         order_id: order.id,
         order_number: order.orderNumber,
-        order_status: order.status,
+        order_status: normalizeOrderStatus(order.status),
         total_amount: order.totalAmount,
         customer_name: customerName,
         customer_email: student?.email || null,
@@ -460,13 +703,26 @@ app.patch('/api/admin/orders/:id/status', requireSession('admin'), async (req, r
   }
 
   try {
+    const normalizedStatus = normalizeOrderStatus(status);
+
+    if (isDbConnected) {
+      const order = await Order.findById(id);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found.' });
+      }
+
+      order.status = normalizedStatus;
+      await order.save();
+      return res.json({ message: 'Order status updated.', order: serializeOrder(order.toObject()) });
+    }
+
     const order = demoOrders.find((entry) => String(entry.id) === String(id));
     if (!order) {
       return res.status(404).json({ message: 'Order not found.' });
     }
 
-    order.status = status;
-    return res.json({ message: 'Order status updated.', order });
+    order.status = normalizedStatus;
+    return res.json({ message: 'Order status updated.', order: { ...order, status: order.status } });
   } catch (error) {
     console.error('Order status update failed:', error.message);
     return res.status(500).json({ message: 'Order status update failed.' });
@@ -475,6 +731,10 @@ app.patch('/api/admin/orders/:id/status', requireSession('admin'), async (req, r
 
 app.get('/api/admin/menu', requireSession('admin'), async (req, res) => {
   try {
+    if (isDbConnected) {
+      const items = await MenuItem.find({}).sort({ createdAt: -1 }).lean();
+      return res.json(items.map(normalizeMenuItemFromDb));
+    }
     return res.json(respondWithMenu(demoMenu));
   } catch (error) {
     console.error('Admin menu load failed:', error.message);
@@ -490,6 +750,17 @@ app.post('/api/admin/menu', requireSession('admin'), async (req, res) => {
   }
 
   try {
+    if (isDbConnected) {
+      const item = await MenuItem.create({
+        item_name,
+        description,
+        price: Number(price),
+        availability: true,
+        image_url: image_url || '',
+      });
+      return res.status(201).json({ message: 'Menu item created.', item: normalizeMenuItemFromDb(item.toObject()) });
+    }
+
     const item = { id: Date.now(), item_name, description, price: Number(price), availability: true, image_url: image_url || demoMenu[0].image_url };
     demoMenu.unshift(item);
     return res.status(201).json({ message: 'Menu item created.', item });
@@ -508,6 +779,17 @@ app.patch('/api/admin/menu/:id/availability', requireSession('admin'), async (re
   }
 
   try {
+    if (isDbConnected) {
+      const item = await MenuItem.findById(id);
+      if (!item) {
+        return res.status(404).json({ message: 'Menu item not found.' });
+      }
+
+      item.availability = Boolean(availability);
+      await item.save();
+      return res.json({ message: 'Menu availability updated.', item: normalizeMenuItemFromDb(item.toObject()) });
+    }
+
     const item = demoMenu.find((entry) => String(entry.id) === String(id));
     if (!item) {
       return res.status(404).json({ message: 'Menu item not found.' });
@@ -531,6 +813,24 @@ app.patch('/api/admin/menu/:id/price', requireSession('admin'), async (req, res)
   }
 
   try {
+    if (isDbConnected) {
+      const item = await MenuItem.findById(id);
+      if (!item) {
+        return res.status(404).json({ message: 'Menu item not found.' });
+      }
+
+      const previousPrice = Number(item.price || 0);
+      item.price = numericPrice;
+      await item.save();
+      return res.json({
+        message: 'Menu price updated.',
+        item: normalizeMenuItemFromDb(item.toObject()),
+        previousPrice,
+        newPrice: numericPrice,
+        change: numericPrice - previousPrice,
+      });
+    }
+
     const item = demoMenu.find((entry) => String(entry.id) === String(id));
     if (!item) {
       return res.status(404).json({ message: 'Menu item not found.' });
@@ -553,9 +853,13 @@ app.patch('/api/admin/menu/:id/price', requireSession('admin'), async (req, res)
 
 const connectDatabase = async () => {
   try {
-    await connectDB();
-    isDbConnected = true;
-    console.log('MongoDB connection successful.');
+    isDbConnected = await connectDB();
+    if (isDbConnected) {
+      await seedDatabaseDefaults();
+      console.log('MongoDB connection successful.');
+    } else {
+      console.log('MongoDB unavailable. Continuing in demo mode.');
+    }
   } catch (error) {
     isDbConnected = false;
     console.log('MongoDB unavailable. Continuing in demo mode:', error.message);

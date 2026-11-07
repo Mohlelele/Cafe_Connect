@@ -22,6 +22,22 @@ const STORAGE_KEYS = {
 
 const defaultAnnouncements = [];
 
+const normalizeOrderStatus = (status) => {
+  const value = String(status ?? 'Pending').trim();
+  const normalized = value || 'Pending';
+  const lowered = normalized.toLowerCase();
+
+  if (['prep', 'preparing', 'pending', 'in progress', 'in-progress', 'queued'].includes(lowered)) {
+    return 'Pending';
+  }
+
+  if (['ready', 'completed', 'done'].includes(lowered)) {
+    return 'Ready';
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+};
+
 function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
   const [menuItems, setMenuItems] = useState(() => menuItemsData);
@@ -91,7 +107,7 @@ function App() {
         orderNumber: order.orderNumber || order.order_number || order.id,
         time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now',
         customer: order.customerName || studentUser.name,
-        status: order.status || 'Pending',
+        status: normalizeOrderStatus(order.status || 'Pending'),
         items: (order.items || []).map((entry) => ({
           label: `${Number(entry.quantity || 1)}x ${entry.name || entry.item_name || 'Item'}`,
           price: Number(entry.price || 0) * Number(entry.quantity || 1),
@@ -118,7 +134,7 @@ function App() {
         id: order.order_id || order.id,
         orderNumber: order.order_number || order.orderNumber || order.order_id || order.id,
         customer: order.customer_name || order.customer || 'Student',
-        status: order.order_status || order.status || 'Pending',
+        status: normalizeOrderStatus(order.order_status || order.status || 'Pending'),
         total: Number(order.total_amount || order.total || 0),
         items: Array.isArray(order.items) ? order.items : [{ name: order.item_name || 'Cafe order', quantity: 1, price: Number(order.total_amount || order.total || 0) }],
         createdAt: order.created_at || order.createdAt || new Date().toISOString(),

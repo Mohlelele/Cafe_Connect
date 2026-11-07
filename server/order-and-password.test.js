@@ -191,6 +191,47 @@ test('status updates from admin are reflected in the student order list', async 
   assert.equal(studentResponse.json.some((entry) => entry.id === order.id && entry.status === 'Ready'), true);
 });
 
+test('admin status updates are normalized to the canonical pending and ready states', async () => {
+  const user = {
+    id: Date.now(),
+    name: 'Canonical Status Student',
+    email: `canonical${Date.now()}@example.com`,
+    password: await hashPassword('Status123!'),
+  };
+
+  demoUsers.push(user);
+  const studentToken = createSession('student', user);
+  const order = {
+    id: Date.now(),
+    orderNumber: 'CC-9988',
+    customerName: user.name,
+    studentId: user.id,
+    totalAmount: 180,
+    paymentMethod: 'Card',
+    status: 'Pending',
+    items: [{ name: 'Loaded Chicken Wrap', price: 180, quantity: 1 }],
+  };
+  demoOrders.push(order);
+
+  const adminToken = createSession('admin', demoUsers.find((entry) => entry.email === 'admin@cafeconnect.com'));
+  const updateResponse = await makeRequest(`/api/admin/orders/${order.id}/status`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${adminToken}` },
+    body: JSON.stringify({ status: 'pending' }),
+  });
+
+  assert.equal(updateResponse.statusCode, 200);
+  assert.equal(updateResponse.json.order.status, 'Pending');
+
+  const studentResponse = await makeRequest('/api/orders', {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${studentToken}` },
+  });
+
+  assert.equal(studentResponse.statusCode, 200);
+  assert.equal(studentResponse.json.some((entry) => entry.id === order.id && entry.status === 'Pending'), true);
+});
+
 test('admin menu price changes are reflected in the student menu payload', async () => {
   const menuItem = demoMenu[0];
   const originalPrice = Number(menuItem.price || 0);

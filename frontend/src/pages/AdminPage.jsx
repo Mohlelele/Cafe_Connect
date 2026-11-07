@@ -19,6 +19,24 @@ const initialPasswordForm = {
   newPassword: '',
 };
 
+const normalizeOrderStatus = (status) => {
+  const value = String(status ?? 'Pending').trim();
+  const normalized = value || 'Pending';
+  const lowered = normalized.toLowerCase();
+
+  if (['prep', 'preparing', 'pending', 'in progress', 'in-progress', 'queued'].includes(lowered)) {
+    return 'Pending';
+  }
+
+  if (['ready', 'completed', 'done'].includes(lowered)) {
+    return 'Ready';
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+};
+
+const isPendingStatus = (status) => ['Pending', 'Prep', 'Preparing'].includes(normalizeOrderStatus(status));
+
 function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: sharedMenuItems = [], setMenuItems: setSharedMenuItems, announcements = [], setAnnouncements }) {
   const [menuItems, setMenuItemsState] = useState(sharedMenuItems);
   const [orders, setOrders] = useState([]);
@@ -68,7 +86,7 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
         customer: order.customer_name || order.customer || 'Student',
         item: order.item_name || (Array.isArray(order.items) && order.items.length ? order.items.map((entry) => entry.name || entry.item_name || 'item').join(', ') : 'Cafe order'),
         total: Number(order.total_amount || order.total || 0),
-        status: order.order_status || order.status || 'Pending',
+        status: normalizeOrderStatus(order.order_status || order.status || 'Pending'),
       })));
 
       setStudents(studentsResponse || []);
@@ -94,8 +112,8 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
 
   const stats = useMemo(() => {
     const revenue = orders.reduce((sum, order) => sum + Number(order.total), 0);
-    const readyCount = orders.filter((order) => order.status === 'Ready').length;
-    const pendingCount = orders.filter((order) => order.status === 'Prep').length;
+    const readyCount = orders.filter((order) => normalizeOrderStatus(order.status) === 'Ready').length;
+    const pendingCount = orders.filter((order) => isPendingStatus(order.status)).length;
     const activeItems = menuItems.filter((item) => item.available).length;
 
     return [
@@ -252,7 +270,8 @@ function AdminPage({ navigate, adminUser, setAdminUser, showMessage, menuItems: 
         method: 'PATCH',
         body: JSON.stringify({ status: nextStatus }),
       });
-      setOrders((current) => current.map((order) => (order.id === id ? { ...order, status: nextStatus } : order)));
+      const normalizedStatus = normalizeOrderStatus(nextStatus);
+      setOrders((current) => current.map((order) => (order.id === id ? { ...order, status: normalizedStatus } : order)));
       showMessage(payload.message || 'Order status updated.', 'success');
     } catch (error) {
       showMessage(error.message || 'Status update failed.', 'error');

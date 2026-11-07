@@ -156,6 +156,22 @@ const parseJsonBody = (body) => {
   return body;
 };
 
+const normalizeOrderStatus = (status) => {
+  const value = String(status ?? 'Pending').trim();
+  const normalized = value || 'Pending';
+  const lowered = normalized.toLowerCase();
+
+  if (['prep', 'preparing', 'pending', 'in progress', 'in-progress', 'queued'].includes(lowered)) {
+    return 'Pending';
+  }
+
+  if (['ready', 'completed', 'done'].includes(lowered)) {
+    return 'Ready';
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+};
+
 const demoResponseFor = (endpoint, options = {}) => {
   const data = parseJsonBody(options.body);
 
@@ -314,7 +330,7 @@ const demoResponseFor = (endpoint, options = {}) => {
         customer_name: order.customerName || 'Student',
         item_name: (order.items || []).map((entry) => entry.name || entry.item_name || 'item').join(', ') || 'Cafe order',
         total_amount: Number(order.totalAmount || 0),
-        order_status: order.status || 'Pending',
+        order_status: normalizeOrderStatus(order.status || 'Pending'),
         items: order.items || [],
         created_at: order.createdAt,
       }));
@@ -333,9 +349,9 @@ const demoResponseFor = (endpoint, options = {}) => {
       const orders = getStoredDemoOrders();
       const order = orders.find((entry) => String(entry.id) === String(orderId));
       if (order) {
-        order.status = data.status || order.status;
+        order.status = normalizeOrderStatus(data.status || order.status);
         saveDemoOrders(orders);
-        return { message: 'Order status updated.', order };
+        return { message: 'Order status updated.', order: { ...order, status: order.status } };
       }
       return { message: 'Order status updated.' };
     }

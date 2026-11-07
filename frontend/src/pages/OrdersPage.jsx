@@ -7,9 +7,10 @@ function OrdersPage({ navigate, orders = [], studentUser }) {
   });
 
   const getStatusClass = (status) => {
-    const normalized = String(status || 'Pending').toLowerCase();
+    const value = String(status || 'Pending').trim();
+    const normalized = value.toLowerCase();
     if (normalized.includes('ready')) return 'status-pill ready';
-    if (normalized.includes('prep')) return 'status-pill prep';
+    if (normalized.includes('prep') || normalized.includes('pending') || normalized.includes('queue') || normalized.includes('progress')) return 'status-pill pending';
     return 'status-pill pending';
   };
 
