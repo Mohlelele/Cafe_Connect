@@ -33,13 +33,17 @@ const shouldUseDemoMode = () => {
 
   const hasConfiguredApi = !!import.meta.env.VITE_API_URL && String(import.meta.env.VITE_API_URL).trim() !== '';
   const isLocalOrPrivate = isLocalOrPrivateNetworkHost(window.location.hostname);
-  const isLiveVercelHost = /vercel\.app$/i.test(window.location.hostname) && !/localhost/i.test(window.location.hostname);
+  const forceDemoMode = new URLSearchParams(window.location.search).get('demo') === '1';
+
+  if (forceDemoMode) {
+    return true;
+  }
 
   if (hasConfiguredApi || isLocalOrPrivate) {
     return false;
   }
 
-  return isLiveVercelHost;
+  return false;
 };
 
 const DEMO_USERS = {
@@ -428,6 +432,10 @@ export async function apiRequest(endpoint, options = {}) {
 
   const authToken = localStorage.getItem('cafe-connect-auth-token');
   const baseUrl = API_URL || '';
+
+  if (!baseUrl) {
+    throw new Error('API URL is not configured. Set VITE_API_URL to the deployed backend URL to use the shared MongoDB data source.');
+  }
 
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, {
