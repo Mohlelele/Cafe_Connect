@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useRef, useState, useTransition, type ReactNode } from 'react';
 import { LogoMark } from '@/components/Icons';
 import { useToast } from '@/components/Providers';
-import { getCategoryImage, getItemImage, STATUS_LABELS } from '@/lib/menu';
-import type { ActionResult, MenuCategory, OrderStatus } from '@/lib/types';
+import { getCategoryImage, getItemImage } from '@/lib/menu';
+import type { ActionResult, MenuCategory, OrderStatus, PaymentStatus } from '@/lib/types';
 
 export const CONNECTION_ERROR = 'Could not reach the server. Check your connection and try again.';
 
@@ -21,8 +21,8 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
   );
 }
 
-export function StatusBadge({ status }: { status: OrderStatus }) {
-  return <span className={`badge badge-${status.toLowerCase()}`}>{STATUS_LABELS[status]}</span>;
+export function StatusBadge({ status }: { status: OrderStatus | PaymentStatus }) {
+  return <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>;
 }
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {

@@ -1,6 +1,7 @@
 import { CheckIcon } from '@/components/Icons';
 import { StatusBadge } from '@/components/ui';
-import { formatOrderTime, formatRand, ORDER_STATUSES, PAYMENT_LABELS, STATUS_LABELS } from '@/lib/menu';
+import { formatOrderTime, formatRand, PAYMENT_LABELS } from '@/lib/menu';
+import { ORDER_STATUSES } from '@/lib/order-status';
 import type { Order } from '@/lib/types';
 
 export default function OrderCard({ order }: { order: Order }) {
@@ -16,12 +17,12 @@ export default function OrderCard({ order }: { order: Order }) {
         <StatusBadge status={order.status} />
       </header>
 
-      {order.status === 'Paid' ? null : (
-        <ol className="order-progress" aria-label={`Order status: ${STATUS_LABELS[order.status]}`}>
+      {order.status === 'Collected' ? null : (
+        <ol className="order-progress" aria-label={`Order status: ${order.status}`}>
           {ORDER_STATUSES.map((status, index) => (
             <li key={status} className={index < currentStep ? 'is-done' : index === currentStep ? 'is-current' : undefined}>
               <span className="order-progress-dot">{index < currentStep ? <CheckIcon /> : null}</span>
-              <span className="order-progress-label">{STATUS_LABELS[status]}</span>
+              <span className="order-progress-label">{status}</span>
             </li>
           ))}
         </ol>
@@ -37,7 +38,10 @@ export default function OrderCard({ order }: { order: Order }) {
       </ul>
 
       <footer className="order-card-footer">
-        <span>{PAYMENT_LABELS[order.paymentMethod]}</span>
+        <span className="order-payment">
+          {PAYMENT_LABELS[order.paymentMethod]}
+          <StatusBadge status={order.paymentStatus} />
+        </span>
         <strong>{formatRand(order.total)}</strong>
       </footer>
     </article>

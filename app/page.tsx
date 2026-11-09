@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ArrowRightIcon, ClockIcon, LogoMark, UtensilsIcon, BasketIcon } from '@/components/Icons';
+import { MenuImage } from '@/components/ui';
+import { getFeaturedItems } from '@/lib/data';
+import { formatRand } from '@/lib/menu';
 import { getCurrentProfile } from '@/lib/session';
 
 const STEPS = [
@@ -12,6 +15,7 @@ const STEPS = [
 export default async function WelcomePage() {
   const profile = await getCurrentProfile();
   if (profile) redirect(profile.role === 'admin' ? '/admin' : '/menu');
+  const featured = await getFeaturedItems();
 
   return (
     <div className="welcome">
@@ -26,7 +30,7 @@ export default async function WelcomePage() {
 
       <main className="welcome-hero">
         <div className="welcome-copy">
-          <p className="eyebrow">Richfield Campus cafeteria</p>
+          <p className="eyebrow">Richfield Polokwane campus cafeteria</p>
           <h1>Order ahead. Skip the queue.</h1>
           <p className="welcome-lead">
             Choose your meal, place your order from anywhere on campus, and collect it the moment it is ready.
@@ -43,6 +47,27 @@ export default async function WelcomePage() {
           alt="A freshly made burger on a wooden board"
         />
       </main>
+
+      {featured.length > 0 ? (
+        <section className="welcome-featured">
+          <h2 className="section-heading">Featured on the menu</h2>
+          <div className="menu-grid">
+            {featured.map((item) => (
+              <article className="food-card" key={item.id}>
+                <MenuImage item={item} alt="" className="food-card-image" />
+                <div className="food-card-body">
+                  <h2>{item.name}</h2>
+                  <p>{item.description}</p>
+                  <div className="food-card-footer">
+                    <strong>{formatRand(item.price)}</strong>
+                    <Link href="/login" className="btn btn-primary btn-sm" aria-label={`Log in to order ${item.name}`}>Order</Link>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="welcome-steps" aria-label="How it works">
         {STEPS.map((step) => (

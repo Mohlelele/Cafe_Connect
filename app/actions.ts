@@ -2,8 +2,9 @@
 
 import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { MENU_CATEGORIES, ORDER_STATUSES, PAYMENT_METHODS } from '@/lib/menu';
+import { MENU_CATEGORIES, PAYMENT_METHODS } from '@/lib/menu';
 import { BasketError, parseBasket, priceBasket } from '@/lib/order-pricing';
+import { canChangeStatus, ORDER_STATUSES } from '@/lib/order-status';
 import { prisma } from '@/lib/prisma';
 import { getCurrentProfile, requireAdmin, requireStudent } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -28,10 +29,13 @@ async function save(successMessage: string, change: () => Promise<unknown>): Pro
     await change();
     return succeed(successMessage);
   } catch (error) {
+    if (error instanceof StatusChangeError) return fail('That status change is not allowed.');
     console.error(error);
     return fail('That could not be saved. Please refresh the page and try again.');
   }
 }
+
+class StatusChangeError extends Error {}
 
 function parsePrice(value: string): number | null {
   const price = Number(value);
@@ -50,7 +54,7 @@ export async function getSignedInRole(): Promise<UserRole | null> {
 
 // ----- Orders -----
 
-export async function placeOrder(items: unknown, paymentMethod: PaymentMethod): Promise<ActionResult> {
+export async function placeOrder(items: unknown, paymentMethod: PaymentMethod): Promise<ActionResult & { orderNumber?: string }> {
   const student = await requireStudent();
   if (!PAYMENT_METHODS.includes(paymentMethod)) return fail('Please choose a valid payment method.');
 
@@ -60,17 +64,18 @@ export async function placeOrder(items: unknown, paymentMethod: PaymentMethod): 
     const { lines, total } = priceBasket(quantities, menuItems.map((item) => ({ ...item, price: item.price.toNumber() })));
     const orderNumber = `CC-${randomBytes(3).toString('hex').toUpperCase()}`;
 
+    // Prisma saves the order, its items and its payment together, or none of them.
     await prisma.order.create({
       data: {
         orderNumber,
         studentId: student.id,
         customerName: student.fullName,
         totalAmount: total,
-        paymentMethod,
         items: { create: lines },
+        payment: { create: { method: paymentMethod, amount: total } },
       },
     });
-    return succeed(`Order ${orderNumber} placed successfully.`);
+    return { ...succeed(`Order ${orderNumber} placed successfully.`), orderNumber };
   } catch (error) {
     if (error instanceof BasketError) return fail(error.message);
     console.error(error);
@@ -81,34 +86,51 @@ export async function placeOrder(items: unknown, paymentMethod: PaymentMethod): 
 export async function setOrderStatus(orderId: string, status: OrderStatus): Promise<ActionResult> {
   await requireAdmin();
   if (!ORDER_STATUSES.includes(status)) return fail('That status is not valid.');
-  return save('Order status updated.', () => prisma.order.update({ where: { id: orderId }, data: { status } }));
+
+  return save('Order status updated.', async () => {
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId }, select: { status: true } });
+    if (!canChangeStatus(order.status, status)) throw new StatusChangeError();
+
+    // Students pay at the counter when they collect, so collecting marks it paid.
+    const now = new Date();
+    const payment = status === 'Collected' ? { update: { status: 'Paid' as const, paidAt: now } } : undefined;
+    await prisma.order.update({ where: { id: orderId }, data: { status, statusUpdatedAt: now, payment } });
+  });
 }
 
 // ----- Menu -----
 
-export async function addMenuItem(input: { name: string; description: string; price: string; imageUrl: string; category: MenuCategory }): Promise<ActionResult> {
-  await requireAdmin();
+type MenuItemInput = { name: string; description: string; price: string; imageUrl: string; category: MenuCategory };
 
+// Returns the cleaned-up item, or a message saying what is wrong with it.
+function checkMenuItem(input: MenuItemInput) {
   const name = input.name.trim();
   const description = input.description.trim();
   const imageUrl = input.imageUrl.trim();
   const price = parsePrice(input.price);
   const category = input.category;
 
-  if (!name || !description) return fail('Item name and description are required.');
-  if (name.length > 100 || description.length > 500) return fail('Item name or description is too long.');
-  if (price === null) return fail('Please enter a valid price greater than zero.');
-  if (!MENU_CATEGORIES.includes(category)) return fail('Please choose a category.');
-  if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) return fail('Image URL must start with http:// or https://.');
+  if (!name || !description) return 'Item name and description are required.';
+  if (name.length > 100 || description.length > 500) return 'Item name or description is too long.';
+  if (price === null) return 'Please enter a valid price greater than zero.';
+  if (!MENU_CATEGORIES.includes(category)) return 'Please choose a category.';
+  if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) return 'Image URL must start with http:// or https://.';
 
-  return save('Menu item added.', () => prisma.menuItem.create({ data: { name, description, price, imageUrl, category } }));
+  return { name, description, price, imageUrl, category };
 }
 
-export async function updateMenuPrice(itemId: string, value: string): Promise<ActionResult> {
+export async function addMenuItem(input: MenuItemInput): Promise<ActionResult> {
   await requireAdmin();
-  const price = parsePrice(value);
-  if (price === null) return fail('Enter a valid price greater than zero.');
-  return save('Price updated.', () => prisma.menuItem.update({ where: { id: itemId }, data: { price } }));
+  const data = checkMenuItem(input);
+  if (typeof data === 'string') return fail(data);
+  return save('Menu item added.', () => prisma.menuItem.create({ data }));
+}
+
+export async function updateMenuItem(itemId: string, input: MenuItemInput): Promise<ActionResult> {
+  await requireAdmin();
+  const data = checkMenuItem(input);
+  if (typeof data === 'string') return fail(data);
+  return save('Menu updated successfully.', () => prisma.menuItem.update({ where: { id: itemId }, data }));
 }
 
 export async function setMenuAvailability(itemId: string, available: boolean): Promise<ActionResult> {

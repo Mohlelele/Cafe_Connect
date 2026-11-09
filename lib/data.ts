@@ -8,18 +8,21 @@ import type { Announcement, MenuItem, Order, OrderStatus, Student } from '@/lib/
 // Functions that read from the database. Pages check who is logged in first.
 
 const MAX_ORDERS = 200;
-const OPEN_STATUSES: OrderStatus[] = ['Pending', 'Prep', 'Ready'];
+const OPEN_STATUSES: OrderStatus[] = ['Pending', 'Preparing', 'Ready'];
+const FULL_ORDER = { items: true, payment: true };
 
 // The browser cannot receive Prisma's Decimal and Date values, so convert them.
-function toOrder(order: Prisma.OrderGetPayload<{ include: { items: true } }>): Order {
+function toOrder(order: Prisma.OrderGetPayload<{ include: typeof FULL_ORDER }>): Order {
   return {
     id: order.id,
     orderNumber: order.orderNumber,
     customerName: order.customerName,
     total: order.totalAmount.toNumber(),
-    paymentMethod: order.paymentMethod,
+    paymentMethod: order.payment?.method ?? 'Cash',
+    paymentStatus: order.payment?.status ?? 'Unpaid',
     status: order.status,
     createdAt: order.createdAt.toISOString(),
+    statusUpdatedAt: order.statusUpdatedAt.toISOString(),
     items: order.items.map((item) => ({
       id: item.id,
       name: item.name,
@@ -29,9 +32,8 @@ function toOrder(order: Prisma.OrderGetPayload<{ include: { items: true } }>): O
   };
 }
 
-export async function getMenu(): Promise<MenuItem[]> {
-  const items = await prisma.menuItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] });
-  return items.map((item) => ({
+function toMenuItem(item: Prisma.MenuItemGetPayload<object>): MenuItem {
+  return {
     id: item.id,
     name: item.name,
     description: item.description,
@@ -39,7 +41,22 @@ export async function getMenu(): Promise<MenuItem[]> {
     available: item.available,
     imageUrl: item.imageUrl,
     category: item.category,
-  }));
+  };
+}
+
+export async function getMenu(): Promise<MenuItem[]> {
+  const items = await prisma.menuItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] });
+  return items.map(toMenuItem);
+}
+
+// The items shown on the home page: whatever was added to the menu most recently.
+export async function getFeaturedItems(): Promise<MenuItem[]> {
+  const items = await prisma.menuItem.findMany({
+    where: { available: true },
+    orderBy: { createdAt: 'desc' },
+    take: 4,
+  });
+  return items.map(toMenuItem);
 }
 
 export async function getAnnouncements(): Promise<Announcement[]> {
@@ -50,11 +67,17 @@ export async function getAnnouncements(): Promise<Announcement[]> {
 export async function getStudentOrders(studentId: string): Promise<Order[]> {
   const orders = await prisma.order.findMany({
     where: { studentId },
-    include: { items: true },
+    include: FULL_ORDER,
     orderBy: { createdAt: 'desc' },
     take: MAX_ORDERS,
   });
   return orders.map(toOrder);
+}
+
+// Includes the student's id so nobody can open someone else's order.
+export async function getStudentOrder(studentId: string, orderNumber: string): Promise<Order | null> {
+  const order = await prisma.order.findFirst({ where: { studentId, orderNumber }, include: FULL_ORDER });
+  return order ? toOrder(order) : null;
 }
 
 export function countOpenStudentOrders(studentId: string): Promise<number> {
@@ -65,7 +88,7 @@ export function countOpenStudentOrders(studentId: string): Promise<number> {
 export async function getActiveOrders(): Promise<Order[]> {
   const orders = await prisma.order.findMany({
     where: { status: { in: OPEN_STATUSES } },
-    include: { items: true },
+    include: FULL_ORDER,
     orderBy: { createdAt: 'asc' },
     take: MAX_ORDERS,
   });
@@ -75,7 +98,7 @@ export async function getActiveOrders(): Promise<Order[]> {
 export async function getOrderHistory(status?: OrderStatus): Promise<Order[]> {
   const orders = await prisma.order.findMany({
     where: { status },
-    include: { items: true },
+    include: FULL_ORDER,
     orderBy: { createdAt: 'desc' },
     take: MAX_ORDERS,
   });
@@ -93,16 +116,16 @@ export function getStudents(): Promise<Student[]> {
 export async function getDashboardStats() {
   // South Africa is UTC+2 all year, so midnight there is always +02:00.
   const todayInCampus = new Date().toLocaleDateString('en-CA', { timeZone: CAMPUS_TIME_ZONE });
-  const today = { createdAt: { gte: new Date(`${todayInCampus}T00:00:00+02:00`) } };
+  const startOfToday = new Date(`${todayInCampus}T00:00:00+02:00`);
 
   const [paid, ordersToday, availableItems] = await Promise.all([
-    prisma.order.aggregate({ where: { ...today, status: 'Paid' }, _sum: { totalAmount: true } }),
-    prisma.order.count({ where: today }),
+    prisma.payment.aggregate({ where: { status: 'Paid', paidAt: { gte: startOfToday } }, _sum: { amount: true } }),
+    prisma.order.count({ where: { createdAt: { gte: startOfToday } } }),
     prisma.menuItem.count({ where: { available: true } }),
   ]);
 
   return {
-    revenueToday: paid._sum.totalAmount?.toNumber() ?? 0,
+    revenueToday: paid._sum.amount?.toNumber() ?? 0,
     ordersToday,
     availableItems,
   };

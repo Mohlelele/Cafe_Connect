@@ -1,4 +1,4 @@
-import type { MenuCategory, MenuItem, OrderStatus, PaymentMethod } from '@/lib/types';
+import type { MenuCategory, MenuItem, PaymentMethod } from '@/lib/types';
 
 export const MENU_CATEGORIES: MenuCategory[] = ['Burgers', 'Pizza', 'Meals', 'Drinks'];
 
@@ -15,15 +15,6 @@ const CATEGORY_IMAGES: Record<MenuCategory, string> = {
 export const getCategoryImage = (category: MenuCategory) => CATEGORY_IMAGES[category];
 
 export const getItemImage = (item: Pick<MenuItem, 'imageUrl' | 'category'>) => item.imageUrl || getCategoryImage(item.category);
-
-export const ORDER_STATUSES: OrderStatus[] = ['Pending', 'Prep', 'Ready', 'Paid'];
-
-export const STATUS_LABELS: Record<OrderStatus, string> = {
-  Pending: 'Received',
-  Prep: 'Preparing',
-  Ready: 'Ready to collect',
-  Paid: 'Completed',
-};
 
 export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   Cash: 'Pay at cafeteria',

@@ -2,13 +2,13 @@
 
 import { setOrderStatus } from '@/app/actions';
 import { useActionRunner } from '@/components/ui';
-import { formatOrderTime, formatRand, STATUS_LABELS } from '@/lib/menu';
+import { formatOrderTime, formatRand, PAYMENT_LABELS } from '@/lib/menu';
 import type { Order, OrderStatus } from '@/lib/types';
 
 const COLUMNS: { status: OrderStatus; next: OrderStatus; action: string }[] = [
-  { status: 'Pending', next: 'Prep', action: 'Start preparing' },
-  { status: 'Prep', next: 'Ready', action: 'Mark ready' },
-  { status: 'Ready', next: 'Paid', action: 'Paid and collected' },
+  { status: 'Pending', next: 'Preparing', action: 'Start preparing' },
+  { status: 'Preparing', next: 'Ready', action: 'Mark ready' },
+  { status: 'Ready', next: 'Collected', action: 'Paid and collected' },
 ];
 
 export default function OrderQueue({ orders }: { orders: Order[] }) {
@@ -19,9 +19,9 @@ export default function OrderQueue({ orders }: { orders: Order[] }) {
       {COLUMNS.map(({ status, next, action }) => {
         const columnOrders = orders.filter((order) => order.status === status);
         return (
-          <section className="queue-column" key={status} aria-label={STATUS_LABELS[status]}>
-            <h2 className={`queue-heading queue-heading-${status.toLowerCase()}`}>
-              {STATUS_LABELS[status]} <span>{columnOrders.length}</span>
+          <section className="queue-column" key={status} aria-label={status}>
+            <h2 className="queue-heading">
+              {status} <span>{columnOrders.length}</span>
             </h2>
 
             {columnOrders.length === 0 ? <p className="queue-empty">No orders</p> : null}
@@ -36,6 +36,7 @@ export default function OrderQueue({ orders }: { orders: Order[] }) {
                 <ul>
                   {order.items.map((item) => <li key={item.id}>{item.quantity} × {item.name}</li>)}
                 </ul>
+                <p className="queue-payment">{PAYMENT_LABELS[order.paymentMethod]} · {order.paymentStatus}</p>
                 <footer>
                   <span>{formatRand(order.total)}</span>
                   <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => run(() => setOrderStatus(order.id, next))}>

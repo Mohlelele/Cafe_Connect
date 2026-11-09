@@ -4,7 +4,7 @@ import OrderHistoryTable from '@/components/admin/OrderHistoryTable';
 import LiveUpdates from '@/components/LiveUpdates';
 import { PageHeader } from '@/components/ui';
 import { getOrderHistory } from '@/lib/data';
-import { ORDER_STATUSES, STATUS_LABELS } from '@/lib/menu';
+import { ORDER_STATUSES } from '@/lib/order-status';
 import { requireAdmin } from '@/lib/session';
 import type { OrderStatus } from '@/lib/types';
 
@@ -24,7 +24,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         <Link href="/admin/orders" className="chip" aria-current={status ? undefined : 'page'}>All</Link>
         {ORDER_STATUSES.map((candidate) => (
           <Link key={candidate} href={`/admin/orders?status=${candidate}`} className="chip" aria-current={status === candidate ? 'page' : undefined}>
-            {STATUS_LABELS[candidate]}
+            {candidate}
           </Link>
         ))}
       </nav>
