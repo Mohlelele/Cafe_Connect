@@ -2,8 +2,9 @@
 // values cannot cross that boundary, so lib/data.ts converts them to these.
 
 export type UserRole = 'student' | 'admin';
-export type OrderStatus = 'Pending' | 'Prep' | 'Ready' | 'Paid';
+export type OrderStatus = 'Pending' | 'Preparing' | 'Ready' | 'Collected';
 export type PaymentMethod = 'Cash' | 'Card' | 'EFT' | 'InstantEFT';
+export type PaymentStatus = 'Unpaid' | 'Paid';
 export type MenuCategory = 'Burgers' | 'Pizza' | 'Meals' | 'Drinks';
 
 export type Profile = {
@@ -43,8 +44,10 @@ export type Order = {
   customerName: string;
   total: number;
   paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
   status: OrderStatus;
   createdAt: string;
+  statusUpdatedAt: string;
   items: OrderLine[];
 };
 

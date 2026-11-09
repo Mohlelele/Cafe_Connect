@@ -21,9 +21,9 @@ enum UserRole {
 
 enum OrderStatus {
   Pending
-  Prep
+  Preparing
   Ready
-  Paid
+  Collected
 
   @@map("order_status")
 }
@@ -35,6 +35,13 @@ enum PaymentMethod {
   InstantEFT @map("Instant EFT")
 
   @@map("payment_method")
+}
+
+enum PaymentStatus {
+  Unpaid
+  Paid
+
+  @@map("payment_status")
 }
 
 enum MenuCategory {
@@ -77,11 +84,12 @@ model Order {
   studentId     String        @map("student_id") @db.Uuid
   customerName  String        @map("customer_name")
   totalAmount   Decimal       @map("total_amount") @db.Decimal(10, 2)
-  paymentMethod PaymentMethod @default(Cash) @map("payment_method")
   status        OrderStatus   @default(Pending)
+  statusUpdatedAt DateTime    @default(now()) @map("status_updated_at") @db.Timestamptz
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
   student       Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   items         OrderItem[]
+  payment       Payment?
 
   @@map("orders")
 }
@@ -97,6 +105,18 @@ model OrderItem {
   menuItem   MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
 
   @@map("order_items")
+}
+
+model Payment {
+  id      String        @id @default(uuid()) @db.Uuid
+  orderId String        @unique @map("order_id") @db.Uuid
+  method  PaymentMethod
+  amount  Decimal       @db.Decimal(10, 2)
+  status  PaymentStatus @default(Unpaid)
+  paidAt  DateTime?     @map("paid_at") @db.Timestamptz
+  order   Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }
 
 model Announcement {

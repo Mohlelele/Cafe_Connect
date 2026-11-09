@@ -22,10 +22,11 @@ export default function CartView() {
     startPlacing(async () => {
       try {
         const result = await placeOrder(cart.map(({ id, quantity }) => ({ id, quantity })), paymentMethod);
-        showToast(result.message, result.ok ? 'success' : 'error');
         if (result.ok) {
           clearCart();
-          router.push('/orders');
+          router.push(`/orders/${result.orderNumber}`);
+        } else {
+          showToast(result.message, 'error');
         }
       } catch {
         showToast(CONNECTION_ERROR, 'error');

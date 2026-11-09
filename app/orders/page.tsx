@@ -11,8 +11,8 @@ export const metadata: Metadata = { title: 'My orders' };
 export default async function OrdersPage() {
   const student = await requireStudent();
   const orders = await getStudentOrders(student.id);
-  const active = orders.filter((order) => order.status !== 'Paid');
-  const past = orders.filter((order) => order.status === 'Paid');
+  const active = orders.filter((order) => order.status !== 'Collected');
+  const past = orders.filter((order) => order.status === 'Collected');
 
   return (
     <main className="page page-narrow">
@@ -37,7 +37,7 @@ export default async function OrdersPage() {
 
       {past.length > 0 ? (
         <section className="stack">
-          <h2 className="section-title">Completed</h2>
+          <h2 className="section-title">Collected</h2>
           {past.map((order) => <OrderCard key={order.id} order={order} />)}
         </section>
       ) : null}
