@@ -1,0 +1,109 @@
+// This file tells Prisma what the database tables look like.
+// The tables themselves are created by the SQL files in prisma/database/migrations.
+// Do not run `prisma migrate` or `prisma db push`: they would delete the
+// Supabase login rules, which Prisma cannot see.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  student
+  admin
+
+  @@map("user_role")
+}
+
+enum OrderStatus {
+  Pending
+  Prep
+  Ready
+  Paid
+
+  @@map("order_status")
+}
+
+enum PaymentMethod {
+  Cash
+  Card
+  EFT
+  InstantEFT @map("Instant EFT")
+
+  @@map("payment_method")
+}
+
+enum MenuCategory {
+  Burgers
+  Pizza
+  Meals
+  Drinks
+
+  @@map("menu_category")
+}
+
+model Profile {
+  id        String   @id @db.Uuid
+  fullName  String   @map("full_name")
+  email     String   @unique
+  role      UserRole @default(student)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  orders    Order[]
+
+  @@map("profiles")
+}
+
+model MenuItem {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  description String       @default("")
+  price       Decimal      @db.Decimal(10, 2)
+  available   Boolean      @default(true)
+  imageUrl    String       @default("") @map("image_url")
+  category    MenuCategory @default(Meals)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  orderItems  OrderItem[]
+
+  @@map("menu_items")
+}
+
+model Order {
+  id            String        @id @default(uuid()) @db.Uuid
+  orderNumber   String        @unique @map("order_number")
+  studentId     String        @map("student_id") @db.Uuid
+  customerName  String        @map("customer_name")
+  totalAmount   Decimal       @map("total_amount") @db.Decimal(10, 2)
+  paymentMethod PaymentMethod @default(Cash) @map("payment_method")
+  status        OrderStatus   @default(Pending)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  student       Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String    @id @default(uuid()) @db.Uuid
+  orderId    String    @map("order_id") @db.Uuid
+  menuItemId String?   @map("menu_item_id") @db.Uuid
+  name       String
+  quantity   Int
+  unitPrice  Decimal   @map("unit_price") @db.Decimal(10, 2)
+  order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+
+  @@map("order_items")
+}
+
+model Announcement {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String   @unique
+  body      String
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("announcements")
+}

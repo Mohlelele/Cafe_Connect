@@ -1,31 +1,18 @@
-# Dependencies
 node_modules/
-frontend/node_modules/
-server/node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
 
-# Environment files
 .env
 .env.*
-frontend/.env
-frontend/.env.*
-server/.env
-server/.env.*
+!.env.example
 
-# Build outputs
-frontend/dist/
-frontend/build/
-server/dist/
-
-# Logs
 *.log
-npm-debug.log*
-
-# OS/editor files
 .DS_Store
 Thumbs.db
 .vscode/
-
-# Git
-*.swp
 .vercel
-.env*
+
+# Prisma client, rebuilt on install
+lib/generated/
