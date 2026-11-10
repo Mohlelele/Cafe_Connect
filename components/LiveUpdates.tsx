@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { loadSupabase } from '@/lib/supabase/lazy';
 
 type LiveTable = 'orders' | 'menu_items' | 'announcements';
 
@@ -17,28 +17,35 @@ export default function LiveUpdates({ tables, showStatus = false }: { tables: Li
   const tableKey = tables.join(',');
 
   useEffect(() => {
-    const supabase = createClient();
     let debounceId: number | undefined;
+    let stopLive = () => {};
+    let unmounted = false;
 
     const refresh = () => {
       window.clearTimeout(debounceId);
       debounceId = window.setTimeout(() => router.refresh(), 250);
     };
 
-    const channel = supabase.channel(`live-${tableKey}`);
-    tableKey.split(',').forEach((table) => {
-      channel.on('postgres_changes', { event: '*', schema: 'public', table }, refresh);
-    });
-    channel.subscribe((status) => setConnected(status === 'SUBSCRIBED'));
+    // The Supabase library is downloaded after the page is ready (see lib/supabase/lazy.ts).
+    loadSupabase().then((supabase) => {
+      if (unmounted) return;
+      const channel = supabase.channel(`live-${tableKey}`);
+      tableKey.split(',').forEach((table) => {
+        channel.on('postgres_changes', { event: '*', schema: 'public', table }, refresh);
+      });
+      channel.subscribe((status) => setConnected(status === 'SUBSCRIBED'));
+      stopLive = () => { supabase.removeChannel(channel); };
+    }).catch(() => setConnected(false));
 
     const intervalId = window.setInterval(() => {
       if (!document.hidden) router.refresh();
     }, FALLBACK_REFRESH_MS);
 
     return () => {
+      unmounted = true;
       window.clearTimeout(debounceId);
       window.clearInterval(intervalId);
-      supabase.removeChannel(channel);
+      stopLive();
     };
   }, [tableKey, router]);
 

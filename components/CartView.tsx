@@ -86,7 +86,7 @@ export default function CartView() {
         <section className="panel checkout-summary" aria-label="Checkout">
           <h2>Order summary</h2>
           <fieldset className="payment-options">
-            <legend>How will you pay?</legend>
+            <legend>Payment</legend>
             {PAYMENT_OPTIONS.map(({ method, label, note }) => {
               const Icon = PAYMENT_ICONS[method];
               return (

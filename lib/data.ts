@@ -45,6 +45,9 @@ function toMenuItem(item: Prisma.MenuItemGetPayload<object>): MenuItem {
     available: item.available,
     imageUrl: item.imageUrl,
     category: item.category,
+    ingredients: item.ingredients,
+    allergens: item.allergens,
+    dietary: item.dietary,
   };
 }
 
@@ -129,20 +132,31 @@ export function getStudents(): Promise<Student[]> {
   });
 }
 
+// Staff sign-ups waiting for a manager to approve them.
+export function getStaffRequests(): Promise<Student[]> {
+  return prisma.profile.findMany({
+    where: { role: 'student', staffRequested: true },
+    select: { id: true, fullName: true, email: true },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
 export async function getDashboardStats() {
   // South Africa is UTC+2 all year, so midnight there is always +02:00.
   const todayInCampus = new Date().toLocaleDateString('en-CA', { timeZone: CAMPUS_TIME_ZONE });
   const startOfToday = new Date(`${todayInCampus}T00:00:00+02:00`);
 
-  const [paid, ordersToday, availableItems] = await Promise.all([
+  const [paid, ordersToday, availableItems, staffRequests] = await Promise.all([
     prisma.payment.aggregate({ where: { status: 'Paid', paidAt: { gte: startOfToday } }, _sum: { amount: true } }),
     prisma.order.count({ where: { createdAt: { gte: startOfToday } } }),
     prisma.menuItem.count({ where: { available: true } }),
+    prisma.profile.count({ where: { role: 'student', staffRequested: true } }),
   ]);
 
   return {
     revenueToday: paid._sum.amount?.toNumber() ?? 0,
     ordersToday,
     availableItems,
+    staffRequests,
   };
 }

@@ -1,10 +1,45 @@
 'use client';
 
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { createStudent, resetStudentPassword } from '@/app/actions';
-import { SearchIcon, StudentIcon } from '@/components/Icons';
-import { EmptyState, PasswordField, useActionRunner } from '@/components/ui';
+import { approveStaffRequest, createStudent, declineStaffRequest, resetStudentPassword } from '@/app/actions';
+import { SearchIcon, ShieldIcon, StudentIcon } from '@/components/Icons';
+import { ConfirmButton, EmptyState, PasswordField, useActionRunner } from '@/components/ui';
 import type { Student } from '@/lib/types';
+
+// People who signed up at /register?staff=1. Approving gives them the staff side.
+export function StaffRequests({ requests }: { requests: Student[] }) {
+  const { run, pending } = useActionRunner();
+  if (requests.length === 0) return null;
+
+  return (
+    <section className="panel staff-requests" aria-labelledby="staff-requests-heading">
+      <h2 id="staff-requests-heading"><ShieldIcon /> Staff account requests</h2>
+      <p>Only approve people you know work in the cafeteria. Approved staff can manage orders, the menu and accounts.</p>
+      <ul>
+        {requests.map((person) => (
+          <li key={person.id}>
+            <div>
+              <strong>{person.fullName}</strong>
+              <span>{person.email}</span>
+            </div>
+            <div className="row-actions-compact">
+              <button type="button" className="btn btn-quiet btn-sm" disabled={pending} onClick={() => run(() => declineStaffRequest(person.id))}>Decline</button>
+              <ConfirmButton
+                label="Approve"
+                ariaLabel={`Approve staff access for ${person.fullName}`}
+                title={`Give ${person.fullName} staff access?`}
+                body={`${person.email} will be able to manage orders, the menu, announcements and student accounts.`}
+                confirmLabel="Approve"
+                disabled={pending}
+                onConfirm={() => run(() => approveStaffRequest(person.id))}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 const emptyStudent = { name: '', email: '', password: '' };
 const emptyReset = { studentId: '', password: '' };

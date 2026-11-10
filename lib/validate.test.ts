@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parsePrice, toCents } from './validate.ts';
+import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parseIngredients, parsePrice, pickAllowed, toCents } from './validate.ts';
+
+test('ingredients can be typed one per line or separated by commas', () => {
+  assert.deepEqual(parseIngredients('Beef patty\nCheese, Lettuce\n\n Cheese '), ['Beef patty', 'Cheese', 'Lettuce']);
+  assert.deepEqual(parseIngredients(''), []);
+  assert.deepEqual(parseIngredients(42), []);
+  assert.equal(parseIngredients('x'.repeat(61)), null);
+  assert.equal(parseIngredients(Array.from({ length: 31 }, (_, i) => `item ${i}`).join('\n')), null);
+});
+
+test('only ticked options from the list are kept', () => {
+  assert.deepEqual(pickAllowed(['Dairy', 'Gluten', 'Poison'], ['Gluten', 'Dairy', 'Eggs']), ['Gluten', 'Dairy']);
+  assert.deepEqual(pickAllowed('Gluten', ['Gluten']), []);
+});
 
 test('text that is not a string becomes empty', () => {
   assert.equal(asText('  burger '), 'burger');
