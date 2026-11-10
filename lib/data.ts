@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { CAMPUS_TIME_ZONE } from '@/lib/menu';
+import { isUuid } from '@/lib/order-pricing';
 import { prisma } from '@/lib/prisma';
 import type { Announcement, MenuItem, Order, OrderStatus, Student } from '@/lib/types';
 
@@ -47,6 +48,13 @@ function toMenuItem(item: Prisma.MenuItemGetPayload<object>): MenuItem {
 export async function getMenu(): Promise<MenuItem[]> {
   const items = await prisma.menuItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] });
   return items.map(toMenuItem);
+}
+
+// One item for its own page. Hidden items count as not found, because students cannot order them.
+export async function getMenuItem(id: string): Promise<MenuItem | null> {
+  if (!isUuid(id)) return null;
+  const item = await prisma.menuItem.findFirst({ where: { id, available: true } });
+  return item ? toMenuItem(item) : null;
 }
 
 // The items shown on the home page: whatever was added to the menu most recently.

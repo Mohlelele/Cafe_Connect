@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { getSignedInRole } from '@/app/actions';
 import { AuthCard, CONNECTION_ERROR, FormError } from '@/components/ui';
+import { rememberLoginView } from '@/lib/login-view';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginForm({ variant, notice }: { variant: 'student' | 'admin'; notice?: string }) {
@@ -34,15 +35,16 @@ export default function LoginForm({ variant, notice }: { variant: 'student' | 'a
         return;
       }
 
-      const role = await getSignedInRole();
-      if (isAdminForm && role !== 'admin') {
+      if (isAdminForm && (await getSignedInRole()) !== 'admin') {
         await supabase.auth.signOut();
         setError('Incorrect email or password.');
         return;
       }
 
+      rememberLoginView(variant);
+
       // A full load, so the server renders the page for the new session.
-      window.location.assign(role === 'admin' ? '/admin' : '/menu');
+      window.location.assign(isAdminForm ? '/admin' : '/menu');
     } catch {
       setError(CONNECTION_ERROR);
     } finally {
