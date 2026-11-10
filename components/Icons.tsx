@@ -9,6 +9,7 @@ import {
   PiBowlFoodDuotone,
   PiCaretLeftBold,
   PiCaretRightBold,
+  PiChatCircleTextDuotone,
   PiCheckBold,
   PiCheckCircleDuotone,
   PiClipboardTextDuotone,
@@ -38,6 +39,7 @@ import {
   PiShieldCheckDuotone,
   PiSignOutDuotone,
   PiSquaresFourDuotone,
+  PiStarFill,
   PiStudentDuotone,
   PiTimerDuotone,
   PiTrashDuotone,
@@ -65,6 +67,7 @@ export const BasketIcon = appIcon(PiBasketDuotone);
 export const BellIcon = appIcon(PiBellRingingDuotone);
 export const CaretLeftIcon = appIcon(PiCaretLeftBold);
 export const CaretRightIcon = appIcon(PiCaretRightBold);
+export const ChatIcon = appIcon(PiChatCircleTextDuotone);
 export const CheckIcon = appIcon(PiCheckBold);
 export const CheckCircleIcon = appIcon(PiCheckCircleDuotone);
 export const ClipboardIcon = appIcon(PiClipboardTextDuotone);
@@ -86,6 +89,7 @@ export const ReceiptIcon = appIcon(PiReceiptDuotone);
 export const SearchIcon = appIcon(PiMagnifyingGlassDuotone);
 export const ShieldIcon = appIcon(PiShieldCheckDuotone);
 export const SignOutIcon = appIcon(PiSignOutDuotone);
+export const StarIcon = appIcon(PiStarFill);
 export const StudentIcon = appIcon(PiStudentDuotone);
 export const SwitchIcon = appIcon(PiArrowsLeftRightDuotone);
 export const TimerIcon = appIcon(PiTimerDuotone);

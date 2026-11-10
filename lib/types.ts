@@ -54,6 +54,16 @@ export type Order = {
   createdAt: string;
   statusUpdatedAt: string;
   items: OrderLine[];
+  feedback: { rating: number; comment: string } | null;
+};
+
+// One student's rating of a collected order, as staff see it.
+export type FeedbackEntry = {
+  orderNumber: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+  updatedAt: string;
 };
 
 export type Student = Pick<Profile, 'id' | 'fullName' | 'email'>;

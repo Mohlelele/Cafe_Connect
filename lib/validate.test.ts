@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parseIngredients, parsePrice, passwordProblem, passwordStrength, pickAllowed, toCents } from './validate.ts';
+import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parseIngredients, parsePrice, parseRating, passwordProblem, passwordStrength, pickAllowed, toCents } from './validate.ts';
 
 test('ingredients can be typed one per line or separated by commas', () => {
   assert.deepEqual(parseIngredients('Beef patty\nCheese, Lettuce\n\n Cheese '), ['Beef patty', 'Cheese', 'Lettuce']);
@@ -59,6 +59,11 @@ test('the strength meter rates passwords as weak, fair or strong', () => {
   assert.equal(passwordStrength('lunch42go').level, 'fair');
   assert.equal(passwordStrength('Lunch42go!').level, 'strong');
   assert.equal(passwordStrength('blue kitchen 42 table').level, 'strong');
+});
+
+test('ratings must be whole stars from 1 to 5', () => {
+  for (const good of [1, 3, 5]) assert.equal(parseRating(good), good);
+  for (const bad of [0, 6, 4.5, '5', null, -1]) assert.equal(parseRating(bad), null, String(bad));
 });
 
 test('a password may not contain the email name', () => {

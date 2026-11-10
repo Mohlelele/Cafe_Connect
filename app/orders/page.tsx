@@ -38,7 +38,7 @@ export default async function OrdersPage() {
       {past.length > 0 ? (
         <section className="stack">
           <h2 className="section-title">Collected</h2>
-          {past.map((order) => <OrderCard key={order.id} order={order} />)}
+          {past.map((order) => <OrderCard key={order.id} order={order} showRating />)}
         </section>
       ) : null}
     </main>
