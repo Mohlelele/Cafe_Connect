@@ -156,6 +156,16 @@ export function Stars({ value, className = 'stars' }: { value: number; className
   );
 }
 
+// "★ 4.6 (12)" on a menu card. Shows nothing until the dish has a rating.
+export function CardRating({ rating }: { rating?: { average: number; count: number } }) {
+  if (!rating || rating.count === 0) return null;
+  return (
+    <span className="card-rating" aria-label={`Rated ${rating.average.toFixed(1)} out of 5 by ${rating.count} ${rating.count === 1 ? 'student' : 'students'}`}>
+      <StarIcon className="icon star-on" /> <strong>{rating.average.toFixed(1)}</strong> <span>({rating.count})</span>
+    </span>
+  );
+}
+
 // Small labels such as "Vegetarian". Shows nothing if there are none.
 export function DietaryTags({ labels }: { labels: string[] }) {
   if (labels.length === 0) return null;

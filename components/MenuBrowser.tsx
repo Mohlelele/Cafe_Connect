@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import AddToBasket from '@/components/AddToBasket';
 import { AllIcon, BellIcon, CATEGORY_ICONS, SearchIcon, UtensilsIcon } from '@/components/Icons';
-import { DietaryTags, EmptyState, MenuImage } from '@/components/ui';
+import { CardRating, DietaryTags, EmptyState, MenuImage } from '@/components/ui';
+import type { MenuRatings } from '@/lib/data';
 import { CATEGORY_FILTERS, formatRand, type CategoryFilter } from '@/lib/menu';
 import type { Announcement, MenuItem } from '@/lib/types';
 
 const CARD_SIZES = '(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 25vw';
 
-export default function MenuBrowser({ items, announcement, initialCategory }: { items: MenuItem[]; announcement: Announcement | null; initialCategory: CategoryFilter }) {
+export default function MenuBrowser({ items, ratings, announcement, initialCategory }: { items: MenuItem[]; ratings: MenuRatings; announcement: Announcement | null; initialCategory: CategoryFilter }) {
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>(initialCategory);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -79,6 +80,7 @@ export default function MenuBrowser({ items, announcement, initialCategory }: { 
               </Link>
               <div className="food-card-body">
                 <h2><Link href={`/menu/${item.id}`}>{item.name}</Link></h2>
+                <CardRating rating={ratings[item.id]} />
                 <DietaryTags labels={item.dietary} />
                 <p>{item.description}</p>
                 <div className="food-card-footer">

@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import AddToBasket from '@/components/AddToBasket';
 import { ArrowRightIcon, BasketIcon, CATEGORY_ICONS, ClockIcon, ReceiptIcon, ShieldIcon, TimerIcon, UtensilsIcon, WalletIcon } from '@/components/Icons';
-import { MenuImage } from '@/components/ui';
-import { getMenu } from '@/lib/data';
+import { CardRating, MenuImage } from '@/components/ui';
+import { getMenu, getMenuRatings } from '@/lib/data';
 import { formatRand, MENU_CATEGORIES } from '@/lib/menu';
 import { getCurrentProfile } from '@/lib/session';
 import { SITE } from '@/lib/site-info';
@@ -36,7 +36,7 @@ export default async function LandingPage() {
   const profile = await getCurrentProfile();
   if (profile) redirect(profile.role === 'admin' ? '/admin' : '/menu');
 
-  const menu = await getMenu();
+  const [menu, ratings] = await Promise.all([getMenu(), getMenuRatings()]);
   const featured = pickFeatured(menu);
 
   return (
@@ -91,6 +91,7 @@ export default async function LandingPage() {
                 </Link>
                 <div className="food-card-body">
                   <h3><Link href={`/menu/${item.id}`}>{item.name}</Link></h3>
+                  <CardRating rating={ratings[item.id]} />
                   <p>{item.description}</p>
                   <div className="food-card-footer">
                     <strong>{formatRand(item.price)}</strong>

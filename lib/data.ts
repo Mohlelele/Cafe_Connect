@@ -163,6 +163,20 @@ export const getItemInsights = cache(async (menuItemId: string) => {
   };
 });
 
+export type MenuRatings = Record<string, { average: number; count: number }>;
+
+// The average star rating of every dish, for the menu cards. A dish's rating
+// comes from the rated orders that included it (same as on its own page).
+export const getMenuRatings = cache(async (): Promise<MenuRatings> => {
+  const rows = await prisma.$queryRaw<{ menu_item_id: string; average: number; count: number }[]>`
+    select oi.menu_item_id, avg(f.rating)::float as average, count(distinct f.order_id)::int as count
+    from public.order_feedback f
+    join public.order_items oi on oi.order_id = f.order_id
+    where oi.menu_item_id is not null
+    group by oi.menu_item_id`;
+  return Object.fromEntries(rows.map((row) => [row.menu_item_id, { average: row.average, count: row.count }]));
+});
+
 export const FEEDBACK_PAGE_SIZE = 25;
 
 // Ratings for the staff Feedback page: the summary covers every rating,
