@@ -4,13 +4,13 @@ import { cache } from 'react';
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { CAMPUS_TIME_ZONE } from '@/lib/menu';
 import { prisma } from '@/lib/prisma';
-import type { Announcement, MenuItem, Order, OrderStatus, Student } from '@/lib/types';
+import type { Announcement, FeedbackEntry, MenuItem, Order, OrderStatus, Student } from '@/lib/types';
 import { isUuid } from '@/lib/validate';
 
 // Functions that read from the database. Pages check who is logged in first.
 
 const OPEN_STATUSES: OrderStatus[] = ['Pending', 'Preparing', 'Ready'];
-const FULL_ORDER = { items: true, payment: true };
+const FULL_ORDER = { items: true, payment: true, feedback: { select: { rating: true, comment: true } } };
 const STUDENT_ORDER_LIMIT = 100;
 export const HISTORY_PAGE_SIZE = 25;
 
@@ -33,6 +33,7 @@ function toOrder(order: Prisma.OrderGetPayload<{ include: typeof FULL_ORDER }>):
       quantity: item.quantity,
       unitPrice: item.unitPrice.toNumber(),
     })),
+    feedback: order.feedback,
   };
 }
 
@@ -130,6 +131,65 @@ export function getStudents(): Promise<Student[]> {
     select: { id: true, fullName: true, email: true },
     orderBy: { fullName: 'asc' },
   });
+}
+
+// Real facts about one dish for its page: how often it has been ordered, and
+// what students said about orders that included it (first names only).
+export const getItemInsights = cache(async (menuItemId: string) => {
+  if (!isUuid(menuItemId)) return { timesOrdered: 0, rating: 0, ratingCount: 0, reviews: [] };
+  const aboutThisDish = { order: { items: { some: { menuItemId } } } };
+
+  const [ordered, ratings, reviews] = await Promise.all([
+    prisma.orderItem.aggregate({ where: { menuItemId }, _sum: { quantity: true } }),
+    prisma.orderFeedback.aggregate({ where: aboutThisDish, _avg: { rating: true }, _count: { _all: true } }),
+    prisma.orderFeedback.findMany({
+      where: { ...aboutThisDish, comment: { not: '' } },
+      orderBy: { updatedAt: 'desc' },
+      take: 3,
+      select: { rating: true, comment: true, updatedAt: true, order: { select: { customerName: true } } },
+    }),
+  ]);
+
+  return {
+    timesOrdered: ordered._sum.quantity ?? 0,
+    rating: ratings._avg.rating ?? 0,
+    ratingCount: ratings._count._all,
+    reviews: reviews.map((review) => ({
+      firstName: review.order.customerName.trim().split(/\s+/)[0] || 'A student',
+      rating: review.rating,
+      comment: review.comment,
+      date: review.updatedAt.toISOString(),
+    })),
+  };
+});
+
+export const FEEDBACK_PAGE_SIZE = 25;
+
+// Ratings for the staff Feedback page: the summary covers every rating,
+// the list shows the newest first, one page at a time.
+export async function getFeedback(page: number) {
+  const [entries, total, summary, byRating] = await Promise.all([
+    prisma.orderFeedback.findMany({
+      orderBy: { updatedAt: 'desc' },
+      skip: (page - 1) * FEEDBACK_PAGE_SIZE,
+      take: FEEDBACK_PAGE_SIZE,
+      select: { rating: true, comment: true, updatedAt: true, order: { select: { orderNumber: true, customerName: true } } },
+    }),
+    prisma.orderFeedback.count(),
+    prisma.orderFeedback.aggregate({ _avg: { rating: true } }),
+    prisma.orderFeedback.groupBy({ by: ['rating'], _count: { _all: true } }),
+  ]);
+
+  const counts = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: byRating.find((row) => row.rating === stars)?._count._all ?? 0 }));
+  const list: FeedbackEntry[] = entries.map((entry) => ({
+    orderNumber: entry.order.orderNumber,
+    customerName: entry.order.customerName,
+    rating: entry.rating,
+    comment: entry.comment,
+    updatedAt: entry.updatedAt.toISOString(),
+  }));
+
+  return { entries: list, total, average: summary._avg.rating ?? 0, counts };
 }
 
 // Staff sign-ups waiting for a manager to approve them.

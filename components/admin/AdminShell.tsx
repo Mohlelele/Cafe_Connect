@@ -3,7 +3,7 @@
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { CloseIcon, HistoryIcon, LightningIcon, LogoFull, MegaphoneIcon, MenuBarsIcon, SignOutIcon, StudentIcon, SwitchIcon, UtensilsIcon } from '@/components/Icons';
+import { ChatIcon, CloseIcon, HistoryIcon, LightningIcon, LogoFull, MegaphoneIcon, MenuBarsIcon, SignOutIcon, StudentIcon, SwitchIcon, UtensilsIcon } from '@/components/Icons';
 import { logOut, switchView } from '@/lib/auth-client';
 
 const LINKS = [
@@ -12,6 +12,7 @@ const LINKS = [
   { href: '/admin/menu', label: 'Menu', Icon: UtensilsIcon },
   { href: '/admin/students', label: 'Students', Icon: StudentIcon },
   { href: '/admin/announcements', label: 'Announcements', Icon: MegaphoneIcon },
+  { href: '/admin/feedback', label: 'Feedback', Icon: ChatIcon },
 ];
 
 function LinkProgress() {

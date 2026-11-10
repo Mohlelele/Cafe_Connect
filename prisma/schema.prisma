@@ -62,6 +62,7 @@ model Profile {
   staffRequested Boolean @default(false) @map("staff_requested")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   orders    Order[]
+  feedback  OrderFeedback[]
 
   @@map("profiles")
 }
@@ -96,6 +97,7 @@ model Order {
   student       Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   items         OrderItem[]
   payment       Payment?
+  feedback      OrderFeedback?
 
   @@unique([studentId, idempotencyKey], map: "orders_student_idempotency_key")
   @@map("orders")
@@ -124,6 +126,20 @@ model Payment {
   order   Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("payments")
+}
+
+// A student's rating (1 to 5) and optional comment for a collected order.
+model OrderFeedback {
+  orderId   String   @id @map("order_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  rating    Int      @db.SmallInt
+  comment   String   @default("")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  student   Profile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("order_feedback")
 }
 
 model Announcement {

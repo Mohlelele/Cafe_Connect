@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useId, useRef, useState, useTransition, type ChangeEvent, type ReactNode } from 'react';
-import { CATEGORY_ICONS, EyeIcon, EyeOffIcon, LeafIcon, LogoFull, LogoMark, WarningIcon } from '@/components/Icons';
+import { CATEGORY_ICONS, EyeIcon, EyeOffIcon, LeafIcon, LogoFull, LogoMark, StarIcon, WarningIcon } from '@/components/Icons';
 import { useToast } from '@/components/Providers';
 import type { ActionResult, MenuCategory, OrderStatus, PaymentStatus } from '@/lib/types';
 import { passwordStrength } from '@/lib/validate';
@@ -142,6 +142,16 @@ export function MenuImage({ item, alt, className, sizes, priority = false }: {
       ) : (
         <span className="media-placeholder"><Placeholder /></span>
       )}
+    </span>
+  );
+}
+
+// A row of five stars showing a rating, e.g. 4 out of 5.
+export function Stars({ value, className = 'stars' }: { value: number; className?: string }) {
+  const rounded = Math.round(value);
+  return (
+    <span className={className} role="img" aria-label={`${value.toFixed(value % 1 ? 1 : 0)} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} className={star <= rounded ? 'icon star-on' : 'icon star-off'} />)}
     </span>
   );
 }

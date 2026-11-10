@@ -12,7 +12,7 @@ import { prisma } from '@/lib/prisma';
 import { getAccountRole, requireAdmin, requireStudent } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ActionResult, UploadResult, UserRole } from '@/lib/types';
-import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, parseIngredients, passwordProblem, parsePrice, pickAllowed, toCents } from '@/lib/validate';
+import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, parseIngredients, parseRating, passwordProblem, parsePrice, pickAllowed, toCents } from '@/lib/validate';
 
 // Everything here can be called from the browser with any values, and Prisma
 // can change any data. So every action starts with requireStudent() or
@@ -167,6 +167,35 @@ async function emailOrderReady(orderId: string) {
     await sendEmail({ to: order.student.email, ...email, idempotencyKey: `order-ready-${order.id}` });
   } catch (error) {
     console.error('Order-ready email failed', error);
+  }
+}
+
+// ----- Ratings -----
+
+// A student rates their own order once it has been collected. Rating again
+// replaces the earlier rating.
+export async function rateOrder(orderId: unknown, rating: unknown, comment: unknown): Promise<ActionResult> {
+  const student = await requireStudent();
+  const stars = parseRating(rating);
+  const text = asText(comment);
+  if (!isUuid(orderId) || stars === null) return fail('Please choose from 1 to 5 stars.');
+  if (text.length > 500) return fail('Please keep your comment under 500 characters.');
+
+  try {
+    // Includes the student's id, so nobody can rate someone else's order.
+    const order = await prisma.order.findFirst({ where: { id: orderId, studentId: student.id }, select: { status: true } });
+    if (!order) return fail('That order could not be found.');
+    if (order.status !== 'Collected') return fail('You can rate your order once you have collected it.');
+
+    await prisma.orderFeedback.upsert({
+      where: { orderId },
+      create: { orderId, studentId: student.id, rating: stars, comment: text },
+      update: { rating: stars, comment: text },
+    });
+    return succeed('Thanks for your feedback!');
+  } catch (error) {
+    console.error(error);
+    return fail(SAVE_FAILED);
   }
 }
 

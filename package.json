@@ -9,7 +9,7 @@
     "test": "node --test \"lib/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "setup:supabase": "node scripts/setup-supabase.mjs",
-    "db:apply": "prisma db execute --file prisma/database/migrations/20261110150000_menu_details.sql && prisma db execute --file prisma/database/migrations/20261110160000_staff_requests.sql",
+    "db:apply": "prisma db execute --file prisma/database/migrations/20261110180000_order_feedback.sql",
     "postinstall": "prisma generate"
   },
   "dependencies": {

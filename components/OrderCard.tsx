@@ -1,11 +1,13 @@
+import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { CheckIcon, STATUS_ICONS } from '@/components/Icons';
-import { StatusBadge } from '@/components/ui';
+import { CheckIcon, StarIcon, STATUS_ICONS } from '@/components/Icons';
+import { Stars, StatusBadge } from '@/components/ui';
 import { formatOrderTime, formatRand, PAYMENT_LABELS } from '@/lib/menu';
 import { ORDER_STATUSES } from '@/lib/order-status';
 import type { Order } from '@/lib/types';
 
-export default function OrderCard({ order }: { order: Order }) {
+// showRating: on My orders, collected orders show their rating or a "Rate" button.
+export default function OrderCard({ order, showRating = false }: { order: Order; showRating?: boolean }) {
   const currentStep = ORDER_STATUSES.indexOf(order.status);
   const progress = { '--progress': currentStep / (ORDER_STATUSES.length - 1) } as CSSProperties;
 
@@ -52,6 +54,16 @@ export default function OrderCard({ order }: { order: Order }) {
         </span>
         <strong>{formatRand(order.total)}</strong>
       </footer>
+
+      {showRating && order.status === 'Collected' ? (
+        <div className="order-card-rating">
+          {order.feedback ? (
+            <><Stars value={order.feedback.rating} /> <span>You rated this order</span></>
+          ) : (
+            <Link href={`/orders/${order.orderNumber}`} className="btn btn-secondary btn-sm"><StarIcon /> Rate this order</Link>
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }

@@ -14,6 +14,7 @@ export default function PrivacyPage() {
           <ul>
             <li>Your name and email address, to run your account.</li>
             <li>Your orders, including items, totals, payment method and payment status.</li>
+            <li>Ratings and comments you leave on collected orders. Your first name and comment may be shown on the menu pages of the dishes you ordered.</li>
           </ul>
         </section>
         <section>

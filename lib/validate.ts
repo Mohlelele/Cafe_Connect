@@ -85,4 +85,9 @@ export const pickAllowed = <T extends string>(value: unknown, allowed: readonly 
   Array.isArray(value) ? allowed.filter((option) => value.includes(option)) : []
 );
 
-export const toCents =(amount: number) => Math.round(amount * 100);
+// A star rating must be a whole number from 1 to 5.
+export const parseRating = (value: unknown): number | null => (
+  typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5 ? value : null
+);
+
+export const toCents = (amount: number) => Math.round(amount * 100);
