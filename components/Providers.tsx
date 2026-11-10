@@ -11,10 +11,14 @@ export type CartEntry = Pick<MenuItem, 'id' | 'name' | 'price' | 'imageUrl' | 'c
 type CartContextValue = {
   cart: CartEntry[];
   cartCount: number;
+  canOrder: boolean;
   addToCart: (item: MenuItem) => void;
   updateCartItem: (id: string, delta: number) => void;
   clearCart: () => void;
 };
+
+const TOAST_SHOWN_MS = 3500;
+const TOAST_LEAVE_MS = 200;
 
 const ToastContext = createContext<ShowToast>(() => {});
 const CartContext = createContext<CartContextValue | null>(null);
@@ -32,18 +36,25 @@ const toCartEntry = ({ id, name, price, imageUrl, category }: MenuItem, quantity
 );
 
 export default function Providers({ studentId, menu, children }: { studentId: string | null; menu: MenuItem[] | null; children: ReactNode }) {
-  const [toast, setToast] = useState<{ message: string; tone: ToastTone } | null>(null);
+  const [toast, setToast] = useState<{ id: number; message: string; tone: ToastTone; leaving: boolean } | null>(null);
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const storageKey = studentId ? `cafe-connect-cart-${studentId}` : null;
 
-  const showToast = useCallback<ShowToast>((message, tone = 'success') => setToast({ message, tone }), []);
+  const showToast = useCallback<ShowToast>((message, tone = 'success') => {
+    setToast({ id: Date.now(), message, tone, leaving: false });
+  }, []);
 
+  const toastId = toast?.id;
   useEffect(() => {
-    if (!toast) return undefined;
-    const timeoutId = window.setTimeout(() => setToast(null), 3500);
-    return () => window.clearTimeout(timeoutId);
-  }, [toast]);
+    if (toastId === undefined) return undefined;
+    const leaveId = window.setTimeout(() => setToast((current) => current && { ...current, leaving: true }), TOAST_SHOWN_MS);
+    const removeId = window.setTimeout(() => setToast(null), TOAST_SHOWN_MS + TOAST_LEAVE_MS);
+    return () => {
+      window.clearTimeout(leaveId);
+      window.clearTimeout(removeId);
+    };
+  }, [toastId]);
 
   // Each student has their own basket, read after hydration because the server has no localStorage.
   useEffect(() => {
@@ -94,6 +105,7 @@ export default function Providers({ studentId, menu, children }: { studentId: st
     return {
       cart,
       cartCount: cart.reduce((total, entry) => total + entry.quantity, 0),
+      canOrder: Boolean(studentId),
       addToCart: (item) => {
         const existing = cart.find((entry) => entry.id === item.id);
         if (existing && existing.quantity >= MAX_ITEM_QUANTITY) {
@@ -119,14 +131,14 @@ export default function Providers({ studentId, menu, children }: { studentId: st
       },
       clearCart: () => setCart([]),
     };
-  }, [cart, showToast]);
+  }, [cart, showToast, studentId]);
 
   return (
     <ToastContext.Provider value={showToast}>
       <CartContext.Provider value={cartValue}>
         {children}
         <div className="toast-region" role="status" aria-live="polite">
-          {toast ? <div className={`toast toast-${toast.tone}`}>{toast.message}</div> : null}
+          {toast ? <div key={toast.id} className={`toast toast-${toast.tone}${toast.leaving ? ' is-leaving' : ''}`}>{toast.message}</div> : null}
         </div>
       </CartContext.Provider>
     </ToastContext.Provider>

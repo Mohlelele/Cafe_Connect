@@ -14,13 +14,14 @@ A campus cafeteria app. Students order ahead and follow their order live. Staff 
 | `app/actions.ts` | Everything that changes data, like placing an order |
 | `lib/data.ts` | Everything that reads data |
 | `lib/session.ts` | Finds out who is logged in |
+| `lib/site-info.ts` | Cafeteria contact details and hours for the footer |
 | `components/` | Reusable pieces of the screen |
 | `prisma/schema.prisma` | Describes the database tables to Prisma |
 | `prisma/database/migrations/` | The SQL that creates the tables |
 
 ## Set it up
 
-1. Run `npm install`.
+1. Use Node.js 22.18 or newer, then run `npm install`.
 2. Copy `.env.example` to `.env.local` and fill it in. The comments say where to find each value.
 3. In the Supabase SQL editor, run the files in `prisma/database/migrations` in name order. Skip any you have already run.
 4. In Supabase, open **Authentication > URL Configuration** and add `http://localhost:3000/auth/callback` to the redirect URLs.

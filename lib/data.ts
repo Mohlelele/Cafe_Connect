@@ -1,16 +1,18 @@
 import 'server-only';
 
+import { cache } from 'react';
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { CAMPUS_TIME_ZONE } from '@/lib/menu';
-import { isUuid } from '@/lib/order-pricing';
 import { prisma } from '@/lib/prisma';
 import type { Announcement, MenuItem, Order, OrderStatus, Student } from '@/lib/types';
+import { isUuid } from '@/lib/validate';
 
 // Functions that read from the database. Pages check who is logged in first.
 
-const MAX_ORDERS = 200;
 const OPEN_STATUSES: OrderStatus[] = ['Pending', 'Preparing', 'Ready'];
 const FULL_ORDER = { items: true, payment: true };
+const STUDENT_ORDER_LIMIT = 100;
+export const HISTORY_PAGE_SIZE = 25;
 
 // The browser cannot receive Prisma's Decimal and Date values, so convert them.
 function toOrder(order: Prisma.OrderGetPayload<{ include: typeof FULL_ORDER }>): Order {
@@ -21,6 +23,7 @@ function toOrder(order: Prisma.OrderGetPayload<{ include: typeof FULL_ORDER }>):
     total: order.totalAmount.toNumber(),
     paymentMethod: order.payment?.method ?? 'Cash',
     paymentStatus: order.payment?.status ?? 'Unpaid',
+    paidAt: order.payment?.paidAt?.toISOString() ?? null,
     status: order.status,
     createdAt: order.createdAt.toISOString(),
     statusUpdatedAt: order.statusUpdatedAt.toISOString(),
@@ -45,27 +48,17 @@ function toMenuItem(item: Prisma.MenuItemGetPayload<object>): MenuItem {
   };
 }
 
-export async function getMenu(): Promise<MenuItem[]> {
+// cache() means the layout and the page share one query per page load.
+export const getMenu = cache(async (): Promise<MenuItem[]> => {
   const items = await prisma.menuItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] });
   return items.map(toMenuItem);
-}
+});
 
-// One item for its own page. Hidden items count as not found, because students cannot order them.
-export async function getMenuItem(id: string): Promise<MenuItem | null> {
+export const getMenuItem = cache(async (id: string): Promise<MenuItem | null> => {
   if (!isUuid(id)) return null;
-  const item = await prisma.menuItem.findFirst({ where: { id, available: true } });
+  const item = await prisma.menuItem.findUnique({ where: { id } });
   return item ? toMenuItem(item) : null;
-}
-
-// The items shown on the home page: whatever was added to the menu most recently.
-export async function getFeaturedItems(): Promise<MenuItem[]> {
-  const items = await prisma.menuItem.findMany({
-    where: { available: true },
-    orderBy: { createdAt: 'desc' },
-    take: 4,
-  });
-  return items.map(toMenuItem);
-}
+});
 
 export async function getAnnouncements(): Promise<Announcement[]> {
   const announcements = await prisma.announcement.findMany({ orderBy: { updatedAt: 'desc' } });
@@ -77,7 +70,7 @@ export async function getStudentOrders(studentId: string): Promise<Order[]> {
     where: { studentId },
     include: FULL_ORDER,
     orderBy: { createdAt: 'desc' },
-    take: MAX_ORDERS,
+    take: STUDENT_ORDER_LIMIT,
   });
   return orders.map(toOrder);
 }
@@ -92,25 +85,40 @@ export function countOpenStudentOrders(studentId: string): Promise<number> {
   return prisma.order.count({ where: { studentId, status: { in: OPEN_STATUSES } } });
 }
 
-// Oldest first, because that is the order the kitchen works through them.
+// Every outstanding order, oldest first, because that is the order the kitchen works through them.
 export async function getActiveOrders(): Promise<Order[]> {
   const orders = await prisma.order.findMany({
     where: { status: { in: OPEN_STATUSES } },
     include: FULL_ORDER,
     orderBy: { createdAt: 'asc' },
-    take: MAX_ORDERS,
   });
   return orders.map(toOrder);
 }
 
-export async function getOrderHistory(status?: OrderStatus): Promise<Order[]> {
-  const orders = await prisma.order.findMany({
-    where: { status },
-    include: FULL_ORDER,
-    orderBy: { createdAt: 'desc' },
-    take: MAX_ORDERS,
-  });
-  return orders.map(toOrder);
+export async function getOrderHistory(filters: { status?: OrderStatus; search?: string; page: number }) {
+  const search = filters.search;
+  const where: Prisma.OrderWhereInput = {
+    status: filters.status,
+    OR: search
+      ? [
+          { orderNumber: { contains: search, mode: 'insensitive' } },
+          { customerName: { contains: search, mode: 'insensitive' } },
+        ]
+      : undefined,
+  };
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      include: FULL_ORDER,
+      orderBy: { createdAt: 'desc' },
+      skip: (filters.page - 1) * HISTORY_PAGE_SIZE,
+      take: HISTORY_PAGE_SIZE,
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  return { orders: orders.map(toOrder), total };
 }
 
 export function getStudents(): Promise<Student[]> {

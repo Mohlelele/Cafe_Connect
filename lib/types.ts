@@ -12,6 +12,7 @@ export type Profile = {
   fullName: string;
   email: string;
   role: UserRole;
+  isStaff: boolean;
 };
 
 export type MenuItem = {
@@ -45,6 +46,7 @@ export type Order = {
   total: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  paidAt: string | null;
   status: OrderStatus;
   createdAt: string;
   statusUpdatedAt: string;

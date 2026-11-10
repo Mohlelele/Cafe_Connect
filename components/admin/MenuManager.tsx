@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { addMenuItem, removeMenuItem, setMenuAvailability, updateMenuItem } from '@/app/actions';
+import { UtensilsIcon } from '@/components/Icons';
 import { ConfirmButton, EmptyState, MenuImage, useActionRunner } from '@/components/ui';
 import { formatRand, MENU_CATEGORIES } from '@/lib/menu';
 import type { MenuCategory, MenuItem } from '@/lib/types';
@@ -30,7 +31,7 @@ function ItemFields({ form, setForm }: { form: ItemForm; setForm: (update: (curr
       <div className="field-pair">
         <label className="field">
           <span>Price (R)</span>
-          <input type="number" name="price" min="0.01" max="100000" step="0.01" value={form.price} onChange={handleChange} required />
+          <input type="number" name="price" min="0.01" max="100000" step="0.01" inputMode="decimal" value={form.price} onChange={handleChange} required />
         </label>
         <label className="field">
           <span>Category</span>
@@ -41,8 +42,10 @@ function ItemFields({ form, setForm }: { form: ItemForm; setForm: (update: (curr
       </div>
       <label className="field">
         <span>Image URL</span>
-        <input type="url" name="imageUrl" placeholder="Optional" value={form.imageUrl} onChange={handleChange} />
+        <input type="url" name="imageUrl" placeholder="https://…" value={form.imageUrl} onChange={handleChange} />
+        <small>Optional. Students see a category icon if there is no photo.</small>
       </label>
+      <MenuImage key={form.imageUrl} item={{ imageUrl: /^https?:\/\/\S+$/i.test(form.imageUrl.trim()) ? form.imageUrl.trim() : '', category: form.category }} alt="Preview of the item's photo" className="image-preview" sizes="420px" />
     </>
   );
 }
@@ -64,7 +67,7 @@ function MenuRow({ item }: { item: MenuItem }) {
 
   return (
     <li className="manage-row">
-      <MenuImage item={item} alt="" className="manage-image" />
+      <MenuImage item={item} alt="" className="manage-image" sizes="52px" />
       <div className="manage-copy">
         <strong>{item.name}</strong>
         <span>{item.category}</span>
@@ -72,17 +75,18 @@ function MenuRow({ item }: { item: MenuItem }) {
       <span className="manage-price">{formatRand(item.price)}</span>
 
       <label className="switch">
-        <input type="checkbox" checked={item.available} disabled={pending} onChange={(event) => run(() => setMenuAvailability(item.id, event.target.checked))} />
+        <input type="checkbox" checked={item.available} disabled={pending} onChange={(event) => run(() => setMenuAvailability(item.id, event.target.checked))} aria-label={`${item.name} is available`} />
         <span className="switch-track" aria-hidden="true" />
-        <span>{item.available ? 'On menu' : 'Hidden'}</span>
+        <span>{item.available ? 'Available' : 'Unavailable'}</span>
       </label>
 
       <div className="row-actions-compact">
         <button type="button" className="btn btn-quiet btn-sm" aria-label={`Edit ${item.name}`} onClick={openEditor}>Edit</button>
         <ConfirmButton
           label="Remove"
+          ariaLabel={`Remove ${item.name}`}
           title={`Remove ${item.name}?`}
-          body="It will disappear from the menu. Past orders keep their details. To take it off temporarily, hide it instead."
+          body="It will disappear from the menu. Past orders keep their details. To take it off temporarily, mark it unavailable instead."
           confirmLabel="Remove item"
           disabled={pending}
           onConfirm={() => run(() => removeMenuItem(item.id))}
@@ -95,7 +99,7 @@ function MenuRow({ item }: { item: MenuItem }) {
           <ItemFields form={form} setForm={setForm} />
           <div className="dialog-actions">
             <button type="button" className="btn btn-secondary" onClick={() => dialogRef.current?.close()}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>Save changes</button>
+            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? 'Saving…' : 'Save changes'}</button>
           </div>
         </form>
       </dialog>
@@ -115,7 +119,7 @@ export default function MenuManager({ menu }: { menu: MenuItem[] }) {
   return (
     <div className="split-layout">
       {menu.length === 0 ? (
-        <EmptyState title="No menu items yet"><p>Add your first item using the form.</p></EmptyState>
+        <EmptyState title="No menu items yet" icon={<UtensilsIcon />}><p>Add your first item using the form.</p></EmptyState>
       ) : (
         <ul className="panel manage-list">
           {menu.map((item) => <MenuRow key={item.id} item={item} />)}

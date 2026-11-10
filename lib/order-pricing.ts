@@ -1,12 +1,11 @@
 // Works out what an order costs. Names and prices always come from the menu,
 // never from the browser, so nobody can change a price by editing the request.
 
+import { isUuid } from './validate.ts';
+
 export const MAX_ITEM_QUANTITY = 20;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STALE_BASKET = 'An item in your basket is no longer available. Please update your basket and try again.';
-
-export const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID.test(value);
 
 // A problem the student can fix, so its message is safe to show them.
 export class BasketError extends Error {}

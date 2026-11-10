@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui';
 import { getCurrentProfile } from '@/lib/session';
 
-export const metadata: Metadata = { title: 'About' };
+export const metadata: Metadata = { title: 'About', description: 'How Cafe Connect makes campus dining easier.' };
 
 const VALUES = [
   { title: 'Fresh meals', body: 'Food is prepared daily with quality ingredients and fast service.' },
@@ -22,16 +22,16 @@ export default async function AboutPage() {
           Cafe Connect makes campus dining easier for students and staff. Browse the menu, place a quick order,
           and pick up your food without standing in line.
         </p>
-        <div className="value-grid">
+        <div className="feature-grid">
           {VALUES.map((value) => (
-            <div key={value.title}>
+            <div key={value.title} className="feature">
               <h2>{value.title}</h2>
               <p>{value.body}</p>
             </div>
           ))}
         </div>
         {profile?.role === 'admin' ? null : (
-          <Link href={profile ? '/menu' : '/login'} className="btn btn-primary">View the menu</Link>
+          <Link href="/menu" className="btn btn-primary">View the menu</Link>
         )}
       </div>
     </main>

@@ -11,8 +11,8 @@ export default async function AdminMenuPage() {
   const menu = await getMenu();
 
   return (
-    <main className="page page-wide">
-      <PageHeader title="Menu" subtitle="Update prices and choose what students can order." />
+    <main className="page">
+      <PageHeader title="Menu" subtitle="Add, edit and control what students can order." />
       <MenuManager menu={menu} />
     </main>
   );

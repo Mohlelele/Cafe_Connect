@@ -1,20 +1,26 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import AddToBasket from '@/components/AddToBasket';
 import { ArrowLeftIcon } from '@/components/Icons';
 import LiveUpdates from '@/components/LiveUpdates';
-import { MenuImage } from '@/components/ui';
+import { MenuImage, StatusBadge } from '@/components/ui';
 import { getMenuItem } from '@/lib/data';
 import { formatRand } from '@/lib/menu';
-import { requireStudent } from '@/lib/session';
+import { getCurrentProfile } from '@/lib/session';
 
-export const metadata: Metadata = { title: 'Menu item' };
+type Props = { params: Promise<{ id: string }> };
 
-export default async function MenuItemPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireStudent();
-  const { id } = await params;
-  const item = await getMenuItem(id);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const item = await getMenuItem((await params).id);
+  return item ? { title: item.name, description: item.description } : { title: 'Menu item' };
+}
+
+export default async function MenuItemPage({ params }: Props) {
+  const profile = await getCurrentProfile();
+  if (profile?.role === 'admin') redirect('/admin');
+
+  const item = await getMenuItem((await params).id);
   if (!item) notFound();
 
   return (
@@ -22,16 +28,19 @@ export default async function MenuItemPage({ params }: { params: Promise<{ id: s
       <LiveUpdates tables={['menu_items']} />
       <Link href="/menu" className="back-link"><ArrowLeftIcon /> Back to menu</Link>
       <article className="panel item-detail">
-        <MenuImage item={item} alt={item.name} className="item-detail-image" />
+        <MenuImage item={item} alt={item.name} className="item-detail-image" sizes="(max-width: 760px) 100vw, 600px" priority />
         <div className="item-detail-body">
-          <span className="eyebrow">{item.category}</span>
+          <div className="item-meta">
+            <span className="eyebrow">{item.category}</span>
+            <StatusBadge status={item.available ? 'Available' : 'Unavailable'} />
+          </div>
           <h1>{item.name}</h1>
           <p>{item.description}</p>
           <div className="food-card-footer">
             <strong className="item-detail-price">{formatRand(item.price)}</strong>
             <AddToBasket item={item} />
           </div>
-          <Link href="/cart" className="btn btn-secondary btn-block">View basket</Link>
+          {profile && item.available ? <Link href="/cart" className="btn btn-secondary btn-block">View basket</Link> : null}
         </div>
       </article>
     </main>

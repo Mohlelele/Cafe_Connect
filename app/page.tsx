@@ -1,66 +1,100 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowRightIcon, ClockIcon, LogoMark, UtensilsIcon, BasketIcon } from '@/components/Icons';
+import AddToBasket from '@/components/AddToBasket';
+import { ArrowRightIcon, BasketIcon, CATEGORY_ICONS, ClockIcon, ReceiptIcon, ShieldIcon, TimerIcon, UtensilsIcon, WalletIcon } from '@/components/Icons';
 import { MenuImage } from '@/components/ui';
-import { getFeaturedItems } from '@/lib/data';
-import { formatRand } from '@/lib/menu';
+import { getMenu } from '@/lib/data';
+import { formatRand, MENU_CATEGORIES } from '@/lib/menu';
 import { getCurrentProfile } from '@/lib/session';
+import { SITE } from '@/lib/site-info';
+import type { MenuItem } from '@/lib/types';
+
+const HERO_PHOTO = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80';
 
 const STEPS = [
-  { title: 'Browse', body: "See today's menu and prices before you leave class.", icon: <UtensilsIcon /> },
-  { title: 'Order', body: 'Build your basket and send it to the kitchen in a few taps.', icon: <BasketIcon /> },
-  { title: 'Collect', body: 'Follow your order live and pick it up when it is ready.', icon: <ClockIcon /> },
+  { title: 'Browse the menu', body: 'See what is available and what it costs before you leave class.', Icon: UtensilsIcon },
+  { title: 'Place your order', body: 'Build your basket, choose how you will pay and get an order number.', Icon: BasketIcon },
+  { title: 'Collect it', body: 'Follow your order as it is prepared and pick it up when it is ready.', Icon: ClockIcon },
 ];
 
-export default async function WelcomePage() {
+const BENEFITS = [
+  { title: 'Skip the queue', body: 'Order before you arrive and spend your break eating.', Icon: TimerIcon },
+  { title: 'Clear prices', body: 'Every item shows its price, so your total holds no surprises.', Icon: ReceiptIcon },
+  { title: 'Pay at the counter', body: 'Nothing is charged online. Staff confirm your payment in person.', Icon: WalletIcon },
+  { title: 'Your own account', body: 'Your orders are private and only visible to you and the cafeteria.', Icon: ShieldIcon },
+];
+
+// One item from each category first, so the home page shows some variety.
+function pickFeatured(menu: MenuItem[]): MenuItem[] {
+  const available = menu.filter((item) => item.available);
+  const firstOfEach = MENU_CATEGORIES.flatMap((category) => available.find((item) => item.category === category) ?? []);
+  return [...firstOfEach, ...available.filter((item) => !firstOfEach.includes(item))].slice(0, 4);
+}
+
+export default async function LandingPage() {
   const profile = await getCurrentProfile();
   if (profile) redirect(profile.role === 'admin' ? '/admin' : '/menu');
-  const featured = await getFeaturedItems();
+
+  const menu = await getMenu();
+  const featured = pickFeatured(menu);
 
   return (
-    <div className="welcome">
-      <header className="welcome-header">
-        <span className="brand"><LogoMark /><span>Cafe Connect</span></span>
-        <nav aria-label="Main">
-          <Link href="/announcements" className="text-link-quiet">Announcements</Link>
-          <Link href="/about" className="text-link-quiet">About</Link>
-          <Link href="/login" className="btn btn-secondary btn-sm">Log in</Link>
-        </nav>
-      </header>
-
-      <main className="welcome-hero">
-        <div className="welcome-copy">
-          <p className="eyebrow">Richfield Polokwane campus cafeteria</p>
-          <h1>Order ahead. Skip the queue.</h1>
-          <p className="welcome-lead">
-            Choose your meal, place your order from anywhere on campus, and collect it the moment it is ready.
-          </p>
-          <div className="welcome-actions">
-            <Link href="/register" className="btn btn-primary btn-lg">Create an account <ArrowRightIcon /></Link>
-            <Link href="/login" className="btn btn-secondary btn-lg">Student login</Link>
+    <main>
+      <section className="hero">
+        <div className="hero-inner">
+          <div>
+            <p className="eyebrow">{SITE.campus} cafeteria</p>
+            <h1><span>Order ahead.</span><span>Skip the queue.</span></h1>
+            <p className="hero-lead">Choose your meal, place your order from anywhere on campus, and collect it when it is ready.</p>
+            <div className="hero-actions">
+              <Link href="/menu" className="btn btn-primary btn-lg">See the menu <ArrowRightIcon /></Link>
+              <Link href="/register" className="btn btn-ghost-light btn-lg">Create an account</Link>
+            </div>
+            <p className="hero-staff">Cafeteria staff? <Link href="/admin-login">Sign in here</Link></p>
           </div>
-          <p className="welcome-staff">Cafeteria staff? <Link href="/admin-login" className="text-link">Sign in here</Link></p>
+          <div className="hero-image">
+            <Image src={HERO_PHOTO} alt="A freshly made burger on a wooden board" fill priority sizes="(max-width: 760px) 100vw, 50vw" />
+          </div>
         </div>
-        <img
-          className="welcome-image"
-          src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80"
-          alt="A freshly made burger on a wooden board"
-        />
-      </main>
+      </section>
+
+      <section className="landing-section" aria-labelledby="categories-heading">
+        <div className="section-heading">
+          <h2 id="categories-heading">What are you in the mood for?</h2>
+        </div>
+        <div className="category-tiles">
+          {MENU_CATEGORIES.map((category) => {
+            const Icon = CATEGORY_ICONS[category];
+            const count = menu.filter((item) => item.category === category && item.available).length;
+            return (
+              <Link key={category} href={`/menu?category=${category}`} className="category-tile">
+                <span className="tile-icon"><Icon /></span>
+                <span><strong>{category}</strong><small>{count} {count === 1 ? 'item' : 'items'}</small></span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
       {featured.length > 0 ? (
-        <section className="welcome-featured">
-          <h2 className="section-heading">Featured on the menu</h2>
+        <section className="landing-section" aria-labelledby="featured-heading">
+          <div className="section-heading">
+            <h2 id="featured-heading">Featured on the menu</h2>
+            <Link href="/menu" className="btn btn-secondary">View full menu</Link>
+          </div>
           <div className="menu-grid">
             {featured.map((item) => (
               <article className="food-card" key={item.id}>
-                <MenuImage item={item} alt="" className="food-card-image" />
+                <Link href={`/menu/${item.id}`} className="food-card-link" aria-label={`View details of ${item.name}`}>
+                  <MenuImage item={item} alt="" className="food-card-image" sizes="(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 25vw" />
+                </Link>
                 <div className="food-card-body">
-                  <h2>{item.name}</h2>
+                  <h3><Link href={`/menu/${item.id}`}>{item.name}</Link></h3>
                   <p>{item.description}</p>
                   <div className="food-card-footer">
                     <strong>{formatRand(item.price)}</strong>
-                    <Link href="/login" className="btn btn-primary btn-sm" aria-label={`Log in to order ${item.name}`}>Order</Link>
+                    <AddToBasket item={item} />
                   </div>
                 </div>
               </article>
@@ -69,15 +103,33 @@ export default async function WelcomePage() {
         </section>
       ) : null}
 
-      <section className="welcome-steps" aria-label="How it works">
-        {STEPS.map((step) => (
-          <div key={step.title} className="welcome-step">
-            <span className="welcome-step-icon">{step.icon}</span>
-            <h2>{step.title}</h2>
-            <p>{step.body}</p>
-          </div>
-        ))}
+      <section className="landing-section" aria-labelledby="how-heading">
+        <div className="section-heading"><h2 id="how-heading">How ordering works</h2></div>
+        <ol className="feature-grid">
+          {STEPS.map(({ title, body, Icon }, index) => (
+            <li key={title} className="feature">
+              <span className="feature-icon"><Icon /></span>
+              <h3><span className="feature-step">Step {index + 1}</span><br />{title}</h3>
+              <p>{body}</p>
+            </li>
+          ))}
+        </ol>
       </section>
-    </div>
+
+      <section className="landing-section" aria-labelledby="benefits-heading">
+        <div className="benefits">
+          <div className="section-heading"><h2 id="benefits-heading">Made for a busy campus day</h2></div>
+          <div className="feature-grid four" style={{ marginTop: 24 }}>
+            {BENEFITS.map(({ title, body, Icon }) => (
+              <div key={title} className="feature">
+                <span className="feature-icon"><Icon /></span>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
