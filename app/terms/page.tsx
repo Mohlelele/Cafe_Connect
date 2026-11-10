@@ -15,7 +15,7 @@ export default function TermsPage() {
         </section>
         <section>
           <h2>Payment</h2>
-          <p>No payment is taken on this website. Staff confirm payment at the cafeteria.</p>
+          <p>No payment is taken on this website. The cafeteria accepts cash only, and staff confirm payment at the counter.</p>
         </section>
         <section>
           <h2>Collection</h2>

@@ -58,6 +58,8 @@ model Profile {
   fullName  String   @map("full_name")
   email     String   @unique
   role      UserRole @default(student)
+  // A staff sign-up waiting for a manager. The role stays "student" until approved.
+  staffRequested Boolean @default(false) @map("staff_requested")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   orders    Order[]
 
@@ -72,6 +74,9 @@ model MenuItem {
   available   Boolean      @default(true)
   imageUrl    String       @default("") @map("image_url")
   category    MenuCategory @default(Meals)
+  ingredients String[]     @default([])
+  allergens   String[]     @default([])
+  dietary     String[]     @default([])
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
   orderItems  OrderItem[]
 

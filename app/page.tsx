@@ -21,7 +21,7 @@ const STEPS = [
 const BENEFITS = [
   { title: 'Skip the queue', body: 'Order before you arrive and spend your break eating.', Icon: TimerIcon },
   { title: 'Clear prices', body: 'Every item shows its price, so your total holds no surprises.', Icon: ReceiptIcon },
-  { title: 'Pay at the counter', body: 'Nothing is charged online. Staff confirm your payment in person.', Icon: WalletIcon },
+  { title: 'Pay cash at the counter', body: 'Nothing is charged online. Pay in cash when you collect your order.', Icon: WalletIcon },
   { title: 'Your own account', body: 'Your orders are private and only visible to you and the cafeteria.', Icon: ShieldIcon },
 ];
 

@@ -22,6 +22,7 @@ import {
   PiForkKnifeDuotone,
   PiHamburgerDuotone,
   PiInfoDuotone,
+  PiLeafDuotone,
   PiLightningDuotone,
   PiListBold,
   PiMagnifyingGlassDuotone,
@@ -40,6 +41,7 @@ import {
   PiStudentDuotone,
   PiTimerDuotone,
   PiTrashDuotone,
+  PiUploadSimpleBold,
   PiUserCircleDuotone,
   PiWalletDuotone,
   PiWarningCircleDuotone,
@@ -74,6 +76,7 @@ export const EyeOffIcon = appIcon(PiEyeSlashDuotone);
 export const HelpIcon = appIcon(PiQuestionDuotone);
 export const HistoryIcon = appIcon(PiClockCounterClockwiseDuotone);
 export const InfoIcon = appIcon(PiInfoDuotone);
+export const LeafIcon = appIcon(PiLeafDuotone);
 export const LightningIcon = appIcon(PiLightningDuotone);
 export const MegaphoneIcon = appIcon(PiMegaphoneDuotone);
 export const MenuBarsIcon = appIcon(PiListBold);
@@ -87,6 +90,7 @@ export const StudentIcon = appIcon(PiStudentDuotone);
 export const SwitchIcon = appIcon(PiArrowsLeftRightDuotone);
 export const TimerIcon = appIcon(PiTimerDuotone);
 export const TrashIcon = appIcon(PiTrashDuotone);
+export const UploadIcon = appIcon(PiUploadSimpleBold);
 export const UtensilsIcon = appIcon(PiForkKnifeDuotone);
 export const WalletIcon = appIcon(PiWalletDuotone);
 export const WarningIcon = appIcon(PiWarningCircleDuotone);

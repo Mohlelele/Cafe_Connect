@@ -1,15 +1,15 @@
 'use server';
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { MENU_CATEGORIES, PAYMENT_METHODS } from '@/lib/menu';
+import { ALLERGENS, DIETARY_LABELS, MENU_CATEGORIES, PAYMENT_METHODS } from '@/lib/menu';
 import { BasketError, parseBasket, priceBasket } from '@/lib/order-pricing';
 import { canChangeStatus, ORDER_STATUSES } from '@/lib/order-status';
 import { prisma } from '@/lib/prisma';
 import { getAccountRole, requireAdmin, requireStudent } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { ActionResult, UserRole } from '@/lib/types';
-import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parsePrice, toCents } from '@/lib/validate';
+import type { ActionResult, UploadResult, UserRole } from '@/lib/types';
+import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parseIngredients, parsePrice, pickAllowed, toCents } from '@/lib/validate';
 
 // Everything here can be called from the browser with any values, and Prisma
 // can change any data. So every action starts with requireStudent() or
@@ -173,7 +173,36 @@ function checkMenuItem(input: unknown) {
   if (!isOneOf(category, MENU_CATEGORIES)) return 'Please choose a category.';
   if (imageUrl && !isValidImageUrl(imageUrl)) return 'Image URL must start with http:// or https://.';
 
-  return { name, description, price, imageUrl, category };
+  const ingredients = parseIngredients(raw.ingredients);
+  if (!ingredients) return 'Please list at most 30 ingredients, each under 60 characters.';
+  const allergens = pickAllowed(raw.allergens, ALLERGENS);
+  const dietary = pickAllowed(raw.dietary, DIETARY_LABELS);
+
+  return { name, description, price, imageUrl, category, ingredients, allergens, dietary };
+}
+
+// Saves a food photo to Supabase Storage and returns its public address.
+// The browser shrinks photos before sending them, so they are usually small.
+const PHOTO_BUCKET = 'menu-images';
+const PHOTO_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+
+export async function uploadMenuPhoto(formData: unknown): Promise<UploadResult> {
+  await requireAdmin();
+  const photo = formData instanceof FormData ? formData.get('photo') : null;
+  if (!(photo instanceof File) || !PHOTO_TYPES[photo.type]) return fail('Please choose a JPG, PNG or WebP photo.');
+  if (photo.size > MAX_PHOTO_BYTES) return fail('That photo is too large. Please choose one under 4 MB.');
+
+  const supabase = createAdminClient();
+  if (!supabase) return fail('Photo uploads need the Supabase service key on the server. You can paste an image link instead.');
+
+  const path = `${randomUUID()}.${PHOTO_TYPES[photo.type]}`;
+  const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, photo, { contentType: photo.type, cacheControl: '31536000' });
+  if (error) {
+    console.error(error);
+    return fail('The photo could not be uploaded. Please try again.');
+  }
+  return { ok: true, message: 'Photo uploaded. Save the item to keep it.', url: supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl };
 }
 
 export async function addMenuItem(input: unknown): Promise<ActionResult> {
@@ -229,6 +258,43 @@ export async function deleteAnnouncement(announcementId: unknown): Promise<Actio
 }
 
 // ----- Student accounts (these use Supabase Auth, not Prisma) -----
+
+// ----- Staff requests -----
+
+// Gives a staff sign-up access to the staff side. Only works on an account that
+// asked for it, so a manager cannot turn an ordinary student into staff by mistake.
+export async function approveStaffRequest(profileId: unknown): Promise<ActionResult> {
+  await requireAdmin();
+  if (!isUuid(profileId)) return fail('That request could not be found.');
+  try {
+    const { count } = await prisma.profile.updateMany({
+      where: { id: profileId, role: 'student', staffRequested: true },
+      data: { role: 'admin', staffRequested: false },
+    });
+    if (count === 0) return failAndRefresh('That request has already been handled.');
+    return succeed('Staff access approved. They can now use Staff sign in.');
+  } catch (error) {
+    console.error(error);
+    return fail(SAVE_FAILED);
+  }
+}
+
+// Turns the request down. The account stays as an ordinary student account.
+export async function declineStaffRequest(profileId: unknown): Promise<ActionResult> {
+  await requireAdmin();
+  if (!isUuid(profileId)) return fail('That request could not be found.');
+  try {
+    const { count } = await prisma.profile.updateMany({
+      where: { id: profileId, role: 'student', staffRequested: true },
+      data: { staffRequested: false },
+    });
+    if (count === 0) return failAndRefresh('That request has already been handled.');
+    return succeed('Request declined. The account can still order as a student.');
+  } catch (error) {
+    console.error(error);
+    return fail(SAVE_FAILED);
+  }
+}
 
 export async function createStudent(input: unknown): Promise<ActionResult> {
   await requireAdmin();

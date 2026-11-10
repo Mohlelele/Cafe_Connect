@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import MenuManager from '@/components/admin/MenuManager';
+import MenuManager, { AddMenuItemButton } from '@/components/admin/MenuManager';
 import { PageHeader } from '@/components/ui';
 import { getMenu } from '@/lib/data';
 import { requireAdmin } from '@/lib/session';
@@ -12,7 +12,9 @@ export default async function AdminMenuPage() {
 
   return (
     <main className="page">
-      <PageHeader title="Menu" subtitle="Add, edit and control what students can order." />
+      <PageHeader title="Menu" subtitle="Add food with photos, ingredients and allergens, and control what students can order.">
+        <AddMenuItemButton />
+      </PageHeader>
       <MenuManager menu={menu} />
     </main>
   );

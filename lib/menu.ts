@@ -5,17 +5,20 @@ export const MENU_CATEGORIES: MenuCategory[] = ['Burgers', 'Pizza', 'Meals', 'Dr
 export const CATEGORY_FILTERS = ['All', ...MENU_CATEGORIES] as const;
 export type CategoryFilter = (typeof CATEGORY_FILTERS)[number];
 
-// No payment is taken on the website. These tell the cafeteria how a student plans to pay.
+// Staff tick these when adding food. To offer another option, add it to the list.
+export const ALLERGENS = ['Gluten', 'Dairy', 'Eggs', 'Peanuts', 'Tree nuts', 'Soy', 'Fish', 'Shellfish', 'Sesame'];
+export const DIETARY_LABELS = ['Vegetarian', 'Vegan', 'Halal'];
+
+// No payment is taken on the website. The cafeteria accepts cash only.
+// To offer another method again, add it back to this list.
 export const PAYMENT_OPTIONS: { method: PaymentMethod; label: string; note: string }[] = [
   { method: 'Cash', label: 'Cash', note: 'Pay at the counter when you collect.' },
-  { method: 'Card', label: 'Card', note: 'Pay by card at the counter when you collect.' },
-  { method: 'EFT', label: 'EFT', note: 'Staff confirm your payment once it has been received.' },
-  { method: 'InstantEFT', label: 'Instant EFT', note: 'Staff confirm your payment once it has been received.' },
 ];
 
 export const PAYMENT_METHODS: PaymentMethod[] = PAYMENT_OPTIONS.map((option) => option.method);
 
-export const PAYMENT_LABELS = Object.fromEntries(PAYMENT_OPTIONS.map((option) => [option.method, option.label])) as Record<PaymentMethod, string>;
+// Older orders may have used another method, so every method keeps a label.
+export const PAYMENT_LABELS: Record<PaymentMethod, string> = { Cash: 'Cash', Card: 'Card', EFT: 'EFT', InstantEFT: 'Instant EFT' };
 
 const randFormatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

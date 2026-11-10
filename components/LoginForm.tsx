@@ -1,17 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { getSignedInRole } from '@/app/actions';
 import { AuthCard, CONNECTION_ERROR, FormError, PasswordField } from '@/components/ui';
 import { rememberLoginView } from '@/lib/login-view';
-import { createClient } from '@/lib/supabase/client';
+import { loadSupabase, preloadSupabase } from '@/lib/supabase/lazy';
 
 export default function LoginForm({ variant, notice }: { variant: 'student' | 'admin'; notice?: string }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState<string | null>(notice ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isAdminForm = variant === 'admin';
+  useEffect(preloadSupabase, []);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -24,7 +25,7 @@ export default function LoginForm({ variant, notice }: { variant: 'student' | 'a
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
+      const supabase = await loadSupabase();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: form.email.trim(),
         password: form.password,
@@ -37,7 +38,7 @@ export default function LoginForm({ variant, notice }: { variant: 'student' | 'a
 
       if (isAdminForm && (await getSignedInRole()) !== 'admin') {
         await supabase.auth.signOut();
-        setError('Incorrect email or password.');
+        setError('This account does not have staff access. If you asked for a staff account, a manager still needs to approve it.');
         return;
       }
 
@@ -78,7 +79,7 @@ export default function LoginForm({ variant, notice }: { variant: 'student' | 'a
 
       <p className="auth-footer">
         {isAdminForm ? (
-          <Link href="/login" className="text-link">Student login</Link>
+          <>New staff member? <Link href="/register?staff=1" className="text-link">Request a staff account</Link> · <Link href="/login" className="text-link">Student login</Link></>
         ) : (
           <>New here? <Link href="/register" className="text-link">Create an account</Link> · <Link href="/admin-login" className="text-link">Staff sign in</Link></>
         )}

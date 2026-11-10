@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import OrderQueue from '@/components/admin/OrderQueue';
-import { ClipboardIcon, ClockIcon, UtensilsIcon, WalletIcon } from '@/components/Icons';
+import { ClipboardIcon, ClockIcon, ShieldIcon, UtensilsIcon, WalletIcon } from '@/components/Icons';
 import LiveUpdates from '@/components/LiveUpdates';
 import { PageHeader } from '@/components/ui';
 import { getActiveOrders, getDashboardStats } from '@/lib/data';
@@ -37,6 +38,15 @@ export default async function AdminPage() {
           </div>
         ))}
       </div>
+      {stats.staffRequests > 0 ? (
+        <aside className="notice">
+          <ShieldIcon />
+          <div>
+            <strong>{stats.staffRequests === 1 ? '1 staff account is' : `${stats.staffRequests} staff accounts are`} waiting for approval</strong>
+            <p><Link href="/admin/students" className="text-link">Review on the Students page</Link></p>
+          </div>
+        </aside>
+      ) : null}
       <OrderQueue orders={orders} />
     </main>
   );

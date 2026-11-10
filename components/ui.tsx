@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useId, useRef, useState, useTransition, type ChangeEvent, type ReactNode } from 'react';
-import { CATEGORY_ICONS, EyeIcon, EyeOffIcon, LogoMark, WarningIcon } from '@/components/Icons';
+import { CATEGORY_ICONS, EyeIcon, EyeOffIcon, LeafIcon, LogoMark, WarningIcon } from '@/components/Icons';
 import { useToast } from '@/components/Providers';
 import type { ActionResult, MenuCategory, OrderStatus, PaymentStatus } from '@/lib/types';
 
@@ -127,6 +127,16 @@ export function MenuImage({ item, alt, className, sizes, priority = false }: {
         <span className="media-placeholder"><Placeholder /></span>
       )}
     </span>
+  );
+}
+
+// Small labels such as "Vegetarian". Shows nothing if there are none.
+export function DietaryTags({ labels }: { labels: string[] }) {
+  if (labels.length === 0) return null;
+  return (
+    <ul className="tag-list" aria-label="Dietary labels">
+      {labels.map((label) => <li key={label} className="tag"><LeafIcon /> {label}</li>)}
+    </ul>
   );
 }
 

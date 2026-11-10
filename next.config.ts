@@ -11,6 +11,8 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   agentRules: false,
+  // Food photos are sent to a server action, which allows 1 MB by default.
+  experimental: { serverActions: { bodySizeLimit: '5mb' } },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },

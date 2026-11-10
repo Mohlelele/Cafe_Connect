@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import AddToBasket from '@/components/AddToBasket';
-import { ArrowLeftIcon } from '@/components/Icons';
+import { ArrowLeftIcon, WarningIcon } from '@/components/Icons';
 import LiveUpdates from '@/components/LiveUpdates';
-import { MenuImage, StatusBadge } from '@/components/ui';
+import { DietaryTags, MenuImage, StatusBadge } from '@/components/ui';
 import { getMenuItem } from '@/lib/data';
 import { formatRand } from '@/lib/menu';
 import { getCurrentProfile } from '@/lib/session';
@@ -35,7 +35,25 @@ export default async function MenuItemPage({ params }: Props) {
             <StatusBadge status={item.available ? 'Available' : 'Unavailable'} />
           </div>
           <h1>{item.name}</h1>
+          <DietaryTags labels={item.dietary} />
           <p>{item.description}</p>
+
+          {item.ingredients.length ? (
+            <section className="item-section">
+              <h2>Ingredients</h2>
+              <ul className="ingredient-list">
+                {item.ingredients.map((ingredient) => <li key={ingredient}>{ingredient}</li>)}
+              </ul>
+            </section>
+          ) : null}
+
+          {item.allergens.length ? (
+            <section className="item-section allergen-box">
+              <h2><WarningIcon /> Contains</h2>
+              <p>{item.allergens.join(', ')}</p>
+            </section>
+          ) : null}
+          <p className="allergy-note">Have an allergy? Please check with cafeteria staff before ordering.</p>
           <div className="food-card-footer">
             <strong className="item-detail-price">{formatRand(item.price)}</strong>
             <AddToBasket item={item} />

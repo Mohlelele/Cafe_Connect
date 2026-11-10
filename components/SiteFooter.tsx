@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoMark } from '@/components/Icons';
 import { AUTH_PAGES, isStaffPath } from '@/components/SiteHeader';
-import { NOT_CONFIRMED, SITE } from '@/lib/site-info';
+import { NOT_CONFIRMED, phoneLink, SITE } from '@/lib/site-info';
 
 export default function SiteFooter() {
   const pathname = usePathname();
@@ -29,11 +29,18 @@ export default function SiteFooter() {
           <h2>Cafeteria</h2>
           <ul>
             <li>{SITE.campus}</li>
-            <li>Address: {SITE.address ?? NOT_CONFIRMED}</li>
-            <li>Hours: {SITE.openingHours ?? NOT_CONFIRMED}</li>
-            <li>Phone: {SITE.phone ?? NOT_CONFIRMED}</li>
-            <li>Email: {SITE.email ?? NOT_CONFIRMED}</li>
+            <li>{SITE.address ?? `Address: ${NOT_CONFIRMED}`}</li>
+            <li>Phone: {SITE.phone ? <a href={phoneLink(SITE.phone)}>{SITE.phone}</a> : NOT_CONFIRMED}</li>
+            <li>Email: {SITE.email ? <a href={`mailto:${SITE.email}`}>{SITE.email}</a> : NOT_CONFIRMED}</li>
           </ul>
+        </div>
+        <div>
+          <h2>Opening hours</h2>
+          {SITE.openingHours ? (
+            <ul className="footer-hours">
+              {SITE.openingHours.map(({ days, time }) => <li key={days}><span>{days}</span><span>{time}</span></li>)}
+            </ul>
+          ) : <p>{NOT_CONFIRMED}</p>}
         </div>
         <div>
           <h2>Help</h2>
@@ -44,7 +51,7 @@ export default function SiteFooter() {
           </ul>
         </div>
       </div>
-      <div className="site-footer-base">© {new Date().getFullYear()} {SITE.name}, a Six United project.</div>
+      <div className="site-footer-base">© {new Date().getFullYear()} {SITE.name}</div>
     </footer>
   );
 }

@@ -23,6 +23,9 @@ export type MenuItem = {
   available: boolean;
   imageUrl: string;
   category: MenuCategory;
+  ingredients: string[];
+  allergens: string[];
+  dietary: string[];
 };
 
 export type Announcement = {
@@ -56,3 +59,5 @@ export type Order = {
 export type Student = Pick<Profile, 'id' | 'fullName' | 'email'>;
 
 export type ActionResult = { ok: boolean; message: string };
+
+export type UploadResult = ActionResult & { url?: string };

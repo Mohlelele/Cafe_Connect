@@ -25,4 +25,17 @@ export function parsePrice(value: unknown): number | null {
   return Math.round(price * 100) / 100;
 }
 
-export const toCents = (amount: number) => Math.round(amount * 100);
+// Turns "Beef patty, Cheese" or one-ingredient-per-line text into a clean list.
+// Returns null if the list is too long.
+export function parseIngredients(value: unknown): string[] | null {
+  const ingredients = [...new Set(asText(value).split(/[\n,]/).map((part) => part.trim()).filter(Boolean))];
+  if (ingredients.length > 30 || ingredients.some((ingredient) => ingredient.length > 60)) return null;
+  return ingredients;
+}
+
+// Keeps only the ticked values that are on the allowed list, in the list's order.
+export const pickAllowed = <T extends string>(value: unknown, allowed: readonly T[]): T[] => (
+  Array.isArray(value) ? allowed.filter((option) => value.includes(option)) : []
+);
+
+export const toCents =(amount: number) => Math.round(amount * 100);

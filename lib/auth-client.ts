@@ -1,8 +1,11 @@
 import { rememberLoginView } from '@/lib/login-view';
-import { createClient } from '@/lib/supabase/client';
+import { loadSupabase } from '@/lib/supabase/lazy';
 
+// The header is on every page, so the Supabase library is only downloaded
+// when someone actually logs out (see lib/supabase/lazy.ts).
 export async function logOut() {
-  await createClient().auth.signOut();
+  const supabase = await loadSupabase();
+  await supabase.auth.signOut();
   window.location.assign('/');
 }
 

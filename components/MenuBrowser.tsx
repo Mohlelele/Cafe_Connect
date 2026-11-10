@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import AddToBasket from '@/components/AddToBasket';
 import { AllIcon, BellIcon, CATEGORY_ICONS, SearchIcon, UtensilsIcon } from '@/components/Icons';
-import { EmptyState, MenuImage } from '@/components/ui';
+import { DietaryTags, EmptyState, MenuImage } from '@/components/ui';
 import { CATEGORY_FILTERS, formatRand, type CategoryFilter } from '@/lib/menu';
 import type { Announcement, MenuItem } from '@/lib/types';
 
@@ -19,7 +19,7 @@ export default function MenuBrowser({ items, announcement, initialCategory }: { 
     const keyword = searchTerm.trim().toLowerCase();
     return items
       .filter((item) => selectedCategory === 'All' || item.category === selectedCategory)
-      .filter((item) => !keyword || `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(keyword))
+      .filter((item) => !keyword || `${item.name} ${item.description} ${item.category} ${item.ingredients.join(' ')} ${item.dietary.join(' ')}`.toLowerCase().includes(keyword))
       .sort((a, b) => Number(b.available) - Number(a.available));
   }, [items, selectedCategory, searchTerm]);
 
@@ -79,6 +79,7 @@ export default function MenuBrowser({ items, announcement, initialCategory }: { 
               </Link>
               <div className="food-card-body">
                 <h2><Link href={`/menu/${item.id}`}>{item.name}</Link></h2>
+                <DietaryTags labels={item.dietary} />
                 <p>{item.description}</p>
                 <div className="food-card-footer">
                   <strong>{formatRand(item.price)}</strong>
