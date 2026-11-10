@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { confirmPayment, setOrderStatus } from '@/app/actions';
+import CollectButton from '@/components/admin/CollectButton';
 import { SearchIcon, STATUS_ICONS } from '@/components/Icons';
 import { StatusBadge, useActionRunner } from '@/components/ui';
 import { formatOrderTime, formatRand, PAYMENT_LABELS } from '@/lib/menu';
@@ -74,9 +75,13 @@ export default function OrderQueue({ orders }: { orders: Order[] }) {
                   </div>
                   <footer>
                     <span>{formatRand(order.total)}</span>
-                    <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => run(() => setOrderStatus(order.id, next))}>
-                      {action}
-                    </button>
+                    {next === 'Collected' ? (
+                      <CollectButton order={order} />
+                    ) : (
+                      <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => run(() => setOrderStatus(order.id, next))}>
+                        {action}
+                      </button>
+                    )}
                   </footer>
                 </article>
               ))}
