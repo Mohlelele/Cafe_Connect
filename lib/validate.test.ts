@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parseIngredients, parsePrice, pickAllowed, toCents } from './validate.ts';
+import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parseIngredients, parsePrice, passwordProblem, passwordStrength, pickAllowed, toCents } from './validate.ts';
 
 test('ingredients can be typed one per line or separated by commas', () => {
   assert.deepEqual(parseIngredients('Beef patty\nCheese, Lettuce\n\n Cheese '), ['Beef patty', 'Cheese', 'Lettuce']);
@@ -41,10 +41,29 @@ test('prices must be positive numbers within the limit', () => {
 });
 
 test('passwords must be 8 to 72 bytes', () => {
-  assert.equal(isValidPassword('password1'), true);
-  assert.equal(isValidPassword('short'), false);
-  assert.equal(isValidPassword('x'.repeat(73)), false);
+  assert.equal(isValidPassword('Lunchtime42'), true);
+  assert.equal(isValidPassword('short1'), false);
+  assert.equal(isValidPassword(`a1${'x'.repeat(71)}`), false);
   assert.equal(isValidPassword(12345678), false);
+});
+
+test('weak and easily guessed passwords are refused', () => {
+  for (const weak of ['12345678', '1234567890', 'abcdefgh', 'password', 'password1', 'Password123', 'abc12345', 'qwerty123', 'aaaa1111', 'cafeconnect1', 'Richfield2026']) {
+    assert.notEqual(passwordProblem(weak), null, weak);
+  }
+  assert.equal(passwordProblem('12345678'), 'Use both letters and numbers in your password.');
+});
+
+test('the strength meter rates passwords as weak, fair or strong', () => {
+  assert.equal(passwordStrength('12345678').level, 'weak');
+  assert.equal(passwordStrength('lunch42go').level, 'fair');
+  assert.equal(passwordStrength('Lunch42go!').level, 'strong');
+  assert.equal(passwordStrength('blue kitchen 42 table').level, 'strong');
+});
+
+test('a password may not contain the email name', () => {
+  assert.notEqual(passwordProblem('thandi2026', 'thandi@student.ac.za'), null);
+  assert.equal(passwordProblem('Kitchen7Blue', 'thandi@student.ac.za'), null);
 });
 
 test('emails and image addresses are checked', () => {

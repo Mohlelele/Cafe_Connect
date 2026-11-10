@@ -3,9 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useId, useRef, useState, useTransition, type ChangeEvent, type ReactNode } from 'react';
-import { CATEGORY_ICONS, EyeIcon, EyeOffIcon, LeafIcon, LogoMark, WarningIcon } from '@/components/Icons';
+import { CATEGORY_ICONS, EyeIcon, EyeOffIcon, LeafIcon, LogoFull, LogoMark, WarningIcon } from '@/components/Icons';
 import { useToast } from '@/components/Providers';
 import type { ActionResult, MenuCategory, OrderStatus, PaymentStatus } from '@/lib/types';
+import { passwordStrength } from '@/lib/validate';
 
 export const CONNECTION_ERROR = 'Could not reach the server. Check your connection and try again.';
 
@@ -42,6 +43,7 @@ export function AuthCard({ title, subtitle, children }: { title: string; subtitl
     <div className="auth-page">
       <aside className="auth-aside" aria-hidden="true">
         <Image src={AUTH_PHOTO} alt="" fill sizes="50vw" />
+        <LogoFull className="logo-full auth-aside-logo" />
         <div className="auth-aside-copy">
           <h2>Your lunch, ready when you are.</h2>
           <p>Order from anywhere on campus and collect without the queue.</p>
@@ -67,7 +69,19 @@ export function FormError({ message }: { message: string | null }) {
   return <p className="form-error" role="alert"><WarningIcon /> <span>{message}</span></p>;
 }
 
-export function PasswordField({ label, name, value, onChange, autoComplete, minLength, hint, labelExtra }: {
+// Shown under a new password while it is typed: Weak, Fair or Strong, with a tip.
+function StrengthMeter({ password, email }: { password: string; email: string }) {
+  if (!password) return null;
+  const { level, label, tip } = passwordStrength(password, email);
+  return (
+    <div className={`strength strength-${level}`} aria-live="polite">
+      <span className="strength-bars" aria-hidden="true"><span /><span /><span /></span>
+      <span><strong>{label}.</strong> {tip}</span>
+    </div>
+  );
+}
+
+export function PasswordField({ label, name, value, onChange, autoComplete, minLength, hint, labelExtra, showStrength = false, email = '' }: {
   label: string;
   name: string;
   value: string;
@@ -76,6 +90,8 @@ export function PasswordField({ label, name, value, onChange, autoComplete, minL
   minLength?: number;
   hint?: string;
   labelExtra?: ReactNode;
+  showStrength?: boolean; // For new passwords only, not when logging in.
+  email?: string; // Lets the meter warn if the password contains the email name.
 }) {
   const [visible, setVisible] = useState(false);
   const id = useId();
@@ -92,7 +108,7 @@ export function PasswordField({ label, name, value, onChange, autoComplete, minL
           {visible ? <EyeOffIcon /> : <EyeIcon />}
         </button>
       </div>
-      {hint ? <small>{hint}</small> : null}
+      {showStrength && value ? <StrengthMeter password={value} email={email} /> : hint ? <small>{hint}</small> : null}
     </div>
   );
 }

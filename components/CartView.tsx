@@ -2,15 +2,49 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import AddToBasket from '@/components/AddToBasket';
 import { useRef, useState, useTransition } from 'react';
 import { placeOrder } from '@/app/actions';
 import { BasketIcon, InfoIcon, MinusIcon, PAYMENT_ICONS, PlusIcon, TrashIcon } from '@/components/Icons';
 import { useCart, useToast } from '@/components/Providers';
 import { CONNECTION_ERROR, EmptyState, MenuImage, PageHeader } from '@/components/ui';
 import { formatRand, PAYMENT_OPTIONS } from '@/lib/menu';
-import type { PaymentMethod } from '@/lib/types';
+import { suggestItems } from '@/lib/suggestions';
+import type { MenuItem, PaymentMethod } from '@/lib/types';
 
-export default function CartView() {
+// "You may like": food that goes with what is in the basket.
+function Suggestions({ menu, title }: { menu: MenuItem[]; title: string }) {
+  const { cart } = useCart();
+  const suggestions = suggestItems(menu, cart.map((entry) => entry.id));
+  if (suggestions.length === 0) return null;
+
+  return (
+    <section className="suggestions" aria-labelledby="suggestions-heading">
+      <div className="section-heading">
+        <h2 id="suggestions-heading">{title}</h2>
+        <Link href="/menu" className="text-link">See the full menu</Link>
+      </div>
+      <div className="suggestion-grid">
+        {suggestions.map((item) => (
+          <article className="food-card suggestion-card" key={item.id}>
+            <Link href={`/menu/${item.id}`} className="food-card-link" aria-label={`View details of ${item.name}`}>
+              <MenuImage item={item} alt="" className="food-card-image" sizes="(max-width: 760px) 50vw, 240px" />
+            </Link>
+            <div className="food-card-body">
+              <h3><Link href={`/menu/${item.id}`}>{item.name}</Link></h3>
+              <div className="food-card-footer">
+                <strong>{formatRand(item.price)}</strong>
+                <AddToBasket item={item} />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default function CartView({ menu }: { menu: MenuItem[] }) {
   const router = useRouter();
   const showToast = useToast();
   const { cart, cartCount, updateCartItem, clearCart } = useCart();
@@ -51,6 +85,7 @@ export default function CartView() {
           <p>Add something from the menu to get started.</p>
           <Link href="/menu" className="btn btn-primary">Browse the menu</Link>
         </EmptyState>
+        <Suggestions menu={menu} title="Popular picks" />
       </>
     );
   }
@@ -108,6 +143,8 @@ export default function CartView() {
           <p className="summary-note"><InfoIcon /> <span>Nothing is charged on this website. Staff confirm your payment at the cafeteria, and you collect using your order number.</span></p>
         </section>
       </div>
+
+      <Suggestions menu={menu} title="You may like" />
 
       <div className="checkout-bar">
         <div>

@@ -116,13 +116,17 @@ export const PAYMENT_ICONS: Record<PaymentMethod, ReturnType<typeof appIcon>> = 
   InstantEFT: appIcon(PiLightningDuotone),
 };
 
+// The Cafe Connect logo. Small web versions of the original artwork live in
+// public/brand (the original is in design/).
+
+// The cup and Wi-Fi icon on a navy tile. Used next to the name on light backgrounds.
 export function LogoMark({ className = 'logo-mark' }: IconProps) {
-  return (
-    <svg viewBox="0 0 32 32" aria-hidden="true" className={className}>
-      <rect width="32" height="32" rx="8" fill="#f5a524" />
-      <path d="M7.5 13h14v6.5a5.5 5.5 0 0 1-5.5 5.5h-3a5.5 5.5 0 0 1-5.5-5.5V13Z" fill="#12293b" />
-      <path d="M21.5 15h1.25a2.75 2.75 0 0 1 0 5.5H21" fill="none" stroke="#12293b" strokeWidth="2" strokeLinecap="round" />
-      <path d="M11.5 6.5c-1 1.2 1 2.3 0 3.5M16.5 6.5c-1 1.2 1 2.3 0 3.5" fill="none" stroke="#12293b" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  // eslint-disable-next-line @next/next/no-img-element -- an 8 KB icon does not need image optimisation.
+  return <img src="/brand/logo-mark.png" alt="" width={34} height={34} className={className} />;
+}
+
+// The full logo with its name. Its white lettering is made for dark backgrounds.
+export function LogoFull({ className = 'logo-full' }: IconProps) {
+  // eslint-disable-next-line @next/next/no-img-element -- already sized and compressed (51 KB).
+  return <img src="/brand/logo-full.webp" alt="Cafe Connect" width={640} height={254} className={className} />;
 }

@@ -4,10 +4,9 @@ import Link from 'next/link';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { AuthCard, CONNECTION_ERROR, FormError, PasswordField } from '@/components/ui';
 import { loadSupabase, preloadSupabase } from '@/lib/supabase/lazy';
+import { PASSWORD_HINT, passwordProblem } from '@/lib/validate';
 
 const MIN_PASSWORD_LENGTH = 8;
-const SHORT_PASSWORD = `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
-const PASSWORD_HINT = `At least ${MIN_PASSWORD_LENGTH} characters.`;
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 // Staff use the same form. Their sign-up only asks for staff access: a manager
@@ -35,8 +34,9 @@ export function RegisterForm({ asStaff = false }: { asStaff?: boolean }) {
       setError('Please enter your name and a valid email address.');
       return;
     }
-    if (form.password.length < MIN_PASSWORD_LENGTH) {
-      setError(SHORT_PASSWORD);
+    const weakPassword = passwordProblem(form.password, email);
+    if (weakPassword) {
+      setError(weakPassword);
       return;
     }
 
@@ -107,7 +107,7 @@ export function RegisterForm({ asStaff = false }: { asStaff?: boolean }) {
           <span>Email</span>
           <input type="email" name="email" autoComplete="email" value={form.email} onChange={handleChange} required />
         </label>
-        <PasswordField label="Password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={form.password} onChange={handleChange} hint={PASSWORD_HINT} />
+        <PasswordField label="Password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={form.password} onChange={handleChange} hint={PASSWORD_HINT} showStrength email={form.email} />
         <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={isSubmitting}>
           {isSubmitting ? 'Creating account…' : asStaff ? 'Request staff account' : 'Create account'}
         </button>
@@ -184,8 +184,9 @@ export function ForgotPasswordForm() {
       setError('Enter the code from the email. It is made of numbers only.');
       return;
     }
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(SHORT_PASSWORD);
+    const weakPassword = passwordProblem(password, email.trim());
+    if (weakPassword) {
+      setError(weakPassword);
       return;
     }
 
@@ -250,7 +251,7 @@ export function ForgotPasswordForm() {
             required
           />
         </label>
-        <PasswordField label="New password" name="newPassword" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => setPassword(event.target.value)} hint={PASSWORD_HINT} />
+        <PasswordField label="New password" name="newPassword" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => setPassword(event.target.value)} hint={PASSWORD_HINT} showStrength email={email} />
         <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={isSubmitting}>
           {isSubmitting ? 'Saving…' : 'Reset password'}
         </button>
@@ -276,8 +277,9 @@ export function ResetPasswordForm() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(SHORT_PASSWORD);
+    const weakPassword = passwordProblem(password);
+    if (weakPassword) {
+      setError(weakPassword);
       return;
     }
 
@@ -305,7 +307,7 @@ export function ResetPasswordForm() {
     <AuthCard title="Choose a new password" subtitle="You'll use this to log in from now on.">
       <form className="form" method="post" onSubmit={handleSubmit}>
         <FormError message={error} />
-        <PasswordField label="New password" name="newPassword" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => setPassword(event.target.value)} hint={PASSWORD_HINT} />
+        <PasswordField label="New password" name="newPassword" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => setPassword(event.target.value)} hint={PASSWORD_HINT} showStrength />
         <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={isSubmitting}>
           {isSubmitting ? 'Saving…' : 'Save new password'}
         </button>

@@ -9,14 +9,13 @@ import { prisma } from '@/lib/prisma';
 import { getAccountRole, requireAdmin, requireStudent } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ActionResult, UploadResult, UserRole } from '@/lib/types';
-import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, isValidPassword, parseIngredients, parsePrice, pickAllowed, toCents } from '@/lib/validate';
+import { asText, isOneOf, isUuid, isValidEmail, isValidImageUrl, parseIngredients, passwordProblem, parsePrice, pickAllowed, toCents } from '@/lib/validate';
 
 // Everything here can be called from the browser with any values, and Prisma
 // can change any data. So every action starts with requireStudent() or
 // requireAdmin(), and checks each argument before using it.
 
 const NO_SERVICE_KEY = 'Student account tools need SUPABASE_SERVICE_ROLE_KEY to be set on the server.';
-const INVALID_PASSWORD = 'Password must be between 8 and 72 characters long.';
 const SAVE_FAILED = 'That could not be saved. Please refresh the page and try again.';
 const ORDER_NUMBER_ATTEMPTS = 5;
 
@@ -309,12 +308,13 @@ export async function createStudent(input: unknown): Promise<ActionResult> {
   if (!name || !email) return fail('Student details are required.');
   if (name.length > 100) return fail('Name must be 100 characters or fewer.');
   if (!isValidEmail(email)) return fail('Please enter a valid email address.');
-  if (!isValidPassword(raw.password)) return fail(INVALID_PASSWORD);
+  const weakPassword = passwordProblem(raw.password, email);
+  if (weakPassword) return fail(weakPassword);
 
   // A database trigger creates the matching row in profiles.
   const { error } = await adminClient.auth.admin.createUser({
     email,
-    password: raw.password,
+    password: raw.password as string,
     email_confirm: true,
     user_metadata: { full_name: name },
   });
@@ -334,13 +334,15 @@ export async function resetStudentPassword(studentId: unknown, password: unknown
   if (!adminClient) return fail(NO_SERVICE_KEY);
 
   if (!isUuid(studentId)) return fail('Select a student and enter a new password.');
-  if (!isValidPassword(password)) return fail(INVALID_PASSWORD);
 
   // Only student accounts can be reset here, never another admin.
   const student = await prisma.profile.findFirst({ where: { id: studentId, role: 'student' } });
   if (!student) return fail('Student not found.');
 
-  const { error } = await adminClient.auth.admin.updateUserById(student.id, { password });
+  const weakPassword = passwordProblem(password, student.email);
+  if (weakPassword) return fail(weakPassword);
+
+  const { error } = await adminClient.auth.admin.updateUserById(student.id, { password: password as string });
   if (error) {
     console.error(error);
     return fail('Password reset failed.');

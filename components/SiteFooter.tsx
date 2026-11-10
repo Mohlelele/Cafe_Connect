@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogoMark } from '@/components/Icons';
+import { LogoFull } from '@/components/Icons';
 import { AUTH_PAGES, isStaffPath } from '@/components/SiteHeader';
 import { NOT_CONFIRMED, phoneLink, SITE } from '@/lib/site-info';
 
@@ -14,7 +14,7 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <div className="site-footer-inner">
         <div className="site-footer-brand">
-          <span className="brand"><LogoMark /><span>{SITE.name}</span></span>
+          <LogoFull className="logo-full footer-logo" />
           <p className="site-footer-blurb">{SITE.description}</p>
         </div>
         <div>
