@@ -2,9 +2,12 @@
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { sendEmail, siteUrl } from '@/lib/email';
+import { buildOrderReadyEmail } from '@/lib/order-email';
 import { ALLERGENS, DIETARY_LABELS, MENU_CATEGORIES, PAYMENT_METHODS } from '@/lib/menu';
 import { BasketError, parseBasket, priceBasket } from '@/lib/order-pricing';
-import { canChangeStatus, ORDER_STATUSES } from '@/lib/order-status';
+import { canChangeStatus, ORDER_STATUSES, orderNumberMatches, WRONG_ORDER_NUMBER } from '@/lib/order-status';
 import { prisma } from '@/lib/prisma';
 import { getAccountRole, requireAdmin, requireStudent } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -114,14 +117,17 @@ export async function placeOrder(items: unknown, paymentMethod: unknown, request
   }
 }
 
-export async function setOrderStatus(orderId: unknown, status: unknown): Promise<ActionResult> {
+// collectionNumber: to mark an order Collected, staff must type the order
+// number the student shows, so food is only handed to the right person.
+export async function setOrderStatus(orderId: unknown, status: unknown, collectionNumber?: unknown): Promise<ActionResult> {
   await requireAdmin();
   if (!isUuid(orderId) || !isOneOf(status, ORDER_STATUSES)) return fail('That status change is not valid.');
 
   try {
-    const order = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
+    const order = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true, orderNumber: true } });
     if (!order) return failAndRefresh('That order no longer exists.');
     if (!canChangeStatus(order.status, status)) return failAndRefresh('That status change is not allowed.');
+    if (status === 'Collected' && !orderNumberMatches(collectionNumber, order.orderNumber)) return fail(WRONG_ORDER_NUMBER);
 
     // Only updates if the status is still what was read above, so two staff
     // members acting at the same moment cannot overwrite each other.
@@ -130,10 +136,37 @@ export async function setOrderStatus(orderId: unknown, status: unknown): Promise
       data: { status, statusUpdatedAt: new Date() },
     });
     if (count === 0) return failAndRefresh('Another staff member just updated this order. The latest status is now showing.');
+
+    // Tell the student their food is ready. after() sends it once the staff
+    // member's screen has updated, so they never wait for the email.
+    if (status === 'Ready') after(() => emailOrderReady(orderId));
     return succeed(`Order moved to ${status}.`);
   } catch (error) {
     console.error(error);
     return fail(SAVE_FAILED);
+  }
+}
+
+// Not exported, so the browser cannot call it: only setOrderStatus sends this email.
+async function emailOrderReady(orderId: string) {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true, payment: true, student: { select: { email: true } } },
+    });
+    if (!order) return;
+
+    const email = buildOrderReadyEmail({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      items: order.items.map((item) => ({ name: item.name, quantity: item.quantity, unitPrice: item.unitPrice.toNumber() })),
+      total: order.totalAmount.toNumber(),
+      paid: order.payment?.status === 'Paid',
+    }, siteUrl());
+
+    await sendEmail({ to: order.student.email, ...email, idempotencyKey: `order-ready-${order.id}` });
+  } catch (error) {
+    console.error('Order-ready email failed', error);
   }
 }
 

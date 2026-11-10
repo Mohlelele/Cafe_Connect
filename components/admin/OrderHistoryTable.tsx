@@ -1,6 +1,7 @@
 'use client';
 
 import { confirmPayment, setOrderStatus } from '@/app/actions';
+import CollectButton from '@/components/admin/CollectButton';
 import { HistoryIcon } from '@/components/Icons';
 import { EmptyState, StatusBadge, useActionRunner } from '@/components/ui';
 import { formatOrderItems, formatOrderTime, formatRand, PAYMENT_LABELS } from '@/lib/menu';
@@ -51,10 +52,12 @@ export default function OrderHistoryTable({ orders }: { orders: Order[] }) {
                   aria-label={`Status of order ${order.orderNumber}`}
                   onChange={(event) => run(() => setOrderStatus(order.id, event.target.value as OrderStatus))}
                 >
-                  {ORDER_STATUSES.filter((status) => status === order.status || canChangeStatus(order.status, status)).map((status) => (
+                  {/* Collected is not offered here: it needs the order number check below. */}
+                  {ORDER_STATUSES.filter((status) => status === order.status || (status !== 'Collected' && canChangeStatus(order.status, status))).map((status) => (
                     <option key={status} value={status}>{status}</option>
                   ))}
                 </select>
+                {order.status === 'Ready' ? <CollectButton order={order} /> : null}
               </td>
               <td data-label="Last update" className="nowrap">{formatOrderTime(order.statusUpdatedAt)}</td>
             </tr>

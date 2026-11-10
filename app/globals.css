@@ -257,6 +257,11 @@ button:disabled { cursor: not-allowed; }
 /* One-time code field (forgot password) */
 .field input.code-input { font-size: 1.375rem; font-variant-numeric: tabular-nums; letter-spacing: 0.3em; text-align: center; }
 .link-button { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.field input.is-invalid, .field input.is-invalid:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgb(179 38 30 / 18%); }
+
+/* Collecting an order */
+.collect-note { display: flex; gap: var(--space-2); align-items: flex-start; margin: 0; padding: 11px 13px; border-radius: 10px; background: var(--amber-tint); color: var(--amber-deep); font-size: var(--text-sm); }
+.data-table td[data-label="Status"] .btn { margin-left: var(--space-2); }
 .link-button:disabled { opacity: 0.6; cursor: default; }
 
 /* Staff account requests (admin Students page) */
