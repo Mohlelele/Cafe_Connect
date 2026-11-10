@@ -1,5 +1,6 @@
 import type { IconType } from 'react-icons';
 import {
+  PiArrowLeftBold,
   PiArrowRightBold,
   PiBellRingingDuotone,
   PiCheckBold,
@@ -28,6 +29,7 @@ const appIcon = (Glyph: IconType) => function AppIcon({ className = 'icon' }: Ic
   return <Glyph className={className} aria-hidden="true" />;
 };
 
+export const ArrowLeftIcon = appIcon(PiArrowLeftBold);
 export const ArrowRightIcon = appIcon(PiArrowRightBold);
 export const BasketIcon = appIcon(PiBasketDuotone);
 export const BellIcon = appIcon(PiBellRingingDuotone);

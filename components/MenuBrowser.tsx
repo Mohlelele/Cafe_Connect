@@ -1,14 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { BellIcon, MinusIcon, PlusIcon, SearchIcon } from '@/components/Icons';
-import { useCart } from '@/components/Providers';
+import AddToBasket from '@/components/AddToBasket';
+import { BellIcon, SearchIcon } from '@/components/Icons';
 import { EmptyState, MenuImage } from '@/components/ui';
 import { CATEGORY_FILTERS, formatRand, type CategoryFilter } from '@/lib/menu';
 import type { Announcement, MenuItem } from '@/lib/types';
 
 export default function MenuBrowser({ items, announcement }: { items: MenuItem[]; announcement: Announcement | null }) {
-  const { cart, addToCart, updateCartItem } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('All');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -20,8 +20,6 @@ export default function MenuBrowser({ items, announcement }: { items: MenuItem[]
       .filter((item) => selectedCategory === 'All' || item.category === selectedCategory)
       .filter((item) => !keyword || `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(keyword));
   }, [visibleItems, selectedCategory, searchTerm]);
-
-  const quantities = useMemo(() => new Map(cart.map((entry) => [entry.id, entry.quantity])), [cart]);
 
   const countFor = (category: CategoryFilter) => (
     category === 'All' ? visibleItems.length : visibleItems.filter((item) => item.category === category).length
@@ -65,32 +63,21 @@ export default function MenuBrowser({ items, announcement }: { items: MenuItem[]
         </EmptyState>
       ) : (
         <div className="menu-grid">
-          {filteredItems.map((item) => {
-            const quantity = quantities.get(item.id) ?? 0;
-            return (
-              <article className="food-card" key={item.id}>
+          {filteredItems.map((item) => (
+            <article className="food-card" key={item.id}>
+              <Link href={`/menu/${item.id}`} className="food-card-link" aria-label={`View details of ${item.name}`}>
                 <MenuImage item={item} alt="" className="food-card-image" />
-                <div className="food-card-body">
-                  <h2>{item.name}</h2>
-                  <p>{item.description}</p>
-                  <div className="food-card-footer">
-                    <strong>{formatRand(item.price)}</strong>
-                    {quantity === 0 ? (
-                      <button type="button" className="btn btn-primary btn-sm" aria-label={`Add ${item.name} to basket`} onClick={() => addToCart(item)}>
-                        Add
-                      </button>
-                    ) : (
-                      <div className="stepper">
-                        <button type="button" aria-label={`Remove one ${item.name}`} onClick={() => updateCartItem(item.id, -1)}><MinusIcon /></button>
-                        <span aria-label={`${quantity} in basket`}>{quantity}</span>
-                        <button type="button" aria-label={`Add one ${item.name}`} onClick={() => updateCartItem(item.id, 1)}><PlusIcon /></button>
-                      </div>
-                    )}
-                  </div>
+              </Link>
+              <div className="food-card-body">
+                <h2><Link href={`/menu/${item.id}`}>{item.name}</Link></h2>
+                <p>{item.description}</p>
+                <div className="food-card-footer">
+                  <strong>{formatRand(item.price)}</strong>
+                  <AddToBasket item={item} />
                 </div>
-              </article>
-            );
-          })}
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </>

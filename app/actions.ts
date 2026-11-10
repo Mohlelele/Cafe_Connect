@@ -6,7 +6,7 @@ import { MENU_CATEGORIES, PAYMENT_METHODS } from '@/lib/menu';
 import { BasketError, parseBasket, priceBasket } from '@/lib/order-pricing';
 import { canChangeStatus, ORDER_STATUSES } from '@/lib/order-status';
 import { prisma } from '@/lib/prisma';
-import { getCurrentProfile, requireAdmin, requireStudent } from '@/lib/session';
+import { getAccountRole, requireAdmin, requireStudent } from '@/lib/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ActionResult, MenuCategory, OrderStatus, PaymentMethod, UserRole } from '@/lib/types';
 
@@ -46,10 +46,9 @@ function parsePrice(value: string): number | null {
 const isValidPassword = (password: string) => password.length >= 8 && Buffer.byteLength(password) <= 72;
 const isValidEmail = (email: string) => email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-// The login form uses this to decide where to send someone after they log in.
+// The staff login form uses this to refuse accounts that are not staff.
 export async function getSignedInRole(): Promise<UserRole | null> {
-  const profile = await getCurrentProfile();
-  return profile ? profile.role : null;
+  return getAccountRole();
 }
 
 // ----- Orders -----

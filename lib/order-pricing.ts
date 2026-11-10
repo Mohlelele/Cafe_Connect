@@ -6,6 +6,8 @@ export const MAX_ITEM_QUANTITY = 20;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STALE_BASKET = 'An item in your basket is no longer available. Please update your basket and try again.';
 
+export const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID.test(value);
+
 // A problem the student can fix, so its message is safe to show them.
 export class BasketError extends Error {}
 
@@ -19,7 +21,7 @@ export function parseBasket(items: unknown): Map<string, number> {
 
   const quantities = new Map<string, number>();
   for (const { id, quantity } of items) {
-    if (typeof id !== 'string' || !UUID.test(id)) throw new BasketError(STALE_BASKET);
+    if (!isUuid(id)) throw new BasketError(STALE_BASKET);
     if (!Number.isInteger(quantity) || quantity < 1) {
       throw new BasketError('Each item needs a whole-number quantity of at least 1.');
     }
