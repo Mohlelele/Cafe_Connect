@@ -5,6 +5,7 @@ import { approveStaffRequest, createStudent, declineStaffRequest, resetStudentPa
 import { SearchIcon, ShieldIcon, StudentIcon } from '@/components/Icons';
 import { ConfirmButton, EmptyState, PasswordField, useActionRunner } from '@/components/ui';
 import type { Student } from '@/lib/types';
+import { PASSWORD_HINT } from '@/lib/validate';
 
 // People who signed up at /register?staff=1. Approving gives them the staff side.
 export function StaffRequests({ requests }: { requests: Student[] }) {
@@ -140,7 +141,7 @@ export default function StudentManager({ students, toolsReady }: { students: Stu
             <span>Email</span>
             <input type="email" name="email" value={studentForm.email} onChange={handleStudentChange} autoComplete="off" required />
           </label>
-          <PasswordField label="Temporary password" name="password" minLength={8} value={studentForm.password} onChange={handleStudentChange} autoComplete="new-password" hint="At least 8 characters." />
+          <PasswordField label="Temporary password" name="password" minLength={8} value={studentForm.password} onChange={handleStudentChange} autoComplete="new-password" hint={PASSWORD_HINT} showStrength email={studentForm.email} />
           <button type="submit" className="btn btn-primary btn-block" disabled={disabled}>Create account</button>
         </form>
 
@@ -153,7 +154,7 @@ export default function StudentManager({ students, toolsReady }: { students: Stu
               {students.map((student) => <option key={student.id} value={student.id}>{student.fullName} ({student.email})</option>)}
             </select>
           </label>
-          <PasswordField label="New password" name="newPassword" minLength={8} value={resetForm.password} onChange={(event) => setResetForm((current) => ({ ...current, password: event.target.value }))} autoComplete="new-password" hint="At least 8 characters." />
+          <PasswordField label="New password" name="newPassword" minLength={8} value={resetForm.password} onChange={(event) => setResetForm((current) => ({ ...current, password: event.target.value }))} autoComplete="new-password" hint={PASSWORD_HINT} showStrength />
           <button type="submit" className="btn btn-secondary btn-block" disabled={disabled}>Update password</button>
         </form>
       </div>

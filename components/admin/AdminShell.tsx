@@ -3,7 +3,7 @@
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { CloseIcon, HistoryIcon, LightningIcon, LogoMark, MegaphoneIcon, MenuBarsIcon, SignOutIcon, StudentIcon, SwitchIcon, UtensilsIcon } from '@/components/Icons';
+import { CloseIcon, HistoryIcon, LightningIcon, LogoFull, MegaphoneIcon, MenuBarsIcon, SignOutIcon, StudentIcon, SwitchIcon, UtensilsIcon } from '@/components/Icons';
 import { logOut, switchView } from '@/lib/auth-client';
 
 const LINKS = [
@@ -39,9 +39,8 @@ export default function AdminShell({ name, children }: { name: string; children:
       <button type="button" className="admin-backdrop" aria-label="Close menu" tabIndex={drawerOpen ? 0 : -1} onClick={() => setDrawerOpen(false)} />
 
       <aside className="admin-sidebar" id="admin-sidebar">
-        <Link href="/admin" className="brand admin-brand" onClick={() => setDrawerOpen(false)}>
-          <LogoMark />
-          <span>Cafe Connect</span>
+        <Link href="/admin" className="admin-brand" onClick={() => setDrawerOpen(false)}>
+          <LogoFull className="logo-full admin-logo" />
         </Link>
 
         <nav className="admin-nav" aria-label="Staff">

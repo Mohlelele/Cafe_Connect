@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(productionHost ? `https://${productionHost}` : 'http://localhost:3000'),
   title: { default: `${SITE.name} | Campus food, ordered ahead`, template: `%s | ${SITE.name}` },
   description: SITE.description,
-  icons: { icon: '/favicon.svg' },
+  icons: { icon: '/brand/icon-64.png', apple: '/brand/apple-icon.png' },
   openGraph: { type: 'website', siteName: SITE.name, title: SITE.name, description: SITE.description },
 };
 

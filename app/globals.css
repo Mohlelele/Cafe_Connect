@@ -76,7 +76,11 @@ button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 4px; }
 .page-transition { display: flex; flex-direction: column; flex: 1; animation: page-in 340ms var(--ease) backwards; }
 .icon { width: 20px; height: 20px; flex: none; }
-.logo-mark { width: 34px; height: 34px; flex: none; }
+.logo-mark { width: 34px; height: 34px; flex: none; border-radius: 9px; }
+.logo-full { display: block; height: auto; }
+.footer-logo { width: 190px; margin-left: -8px; }
+.admin-logo { width: 176px; }
+.auth-aside .auth-aside-logo { position: absolute; top: var(--space-6); left: var(--space-6); z-index: 1; width: 210px; height: auto; inset: var(--space-6) auto auto var(--space-6); object-fit: contain; opacity: 1; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Buttons */
@@ -209,6 +213,8 @@ button:disabled { cursor: not-allowed; }
 .field input:focus, .field textarea:focus, .field select:focus, .select-compact:focus, .search-field:focus-within { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgb(245 165 36 / 28%); }
 .password-wrap { position: relative; }
 .password-wrap input { padding-right: 50px; }
+/* Edge adds its own show-password eye; ours is used instead, so hide Edge's. */
+.password-wrap input::-ms-reveal, .password-wrap input::-ms-clear { display: none; }
 .password-toggle { position: absolute; top: 1px; right: 1px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-soft); border-radius: 9px; }
 .password-toggle:hover { color: var(--ink); }
 .form-error { display: flex; gap: var(--space-2); padding: 11px 13px; border-radius: 10px; background: var(--red-tint); color: var(--red); font-size: var(--text-sm); font-weight: 500; animation: fade-in 200ms ease-out backwards; }
@@ -236,6 +242,17 @@ button:disabled { cursor: not-allowed; }
 .tick input:checked + span { border-color: var(--amber); background: var(--amber-tint); font-weight: 600; }
 .tick input:checked + span::before { border-color: var(--amber-deep); background: var(--amber-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat; }
 .tick input:focus-visible + span { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* Password strength meter */
+.strength { display: grid; gap: 6px; font-size: var(--text-xs); font-weight: 400; color: var(--ink-soft); }
+.strength-bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.strength-bars span { height: 5px; border-radius: var(--radius-full); background: var(--line); transition: background 180ms; }
+.strength-weak strong { color: var(--red); }
+.strength-weak .strength-bars span:nth-child(1) { background: var(--red); }
+.strength-fair strong { color: var(--amber-deep); }
+.strength-fair .strength-bars span:nth-child(-n + 2) { background: var(--amber); }
+.strength-strong strong { color: var(--green); }
+.strength-strong .strength-bars span { background: var(--green); }
 
 /* One-time code field (forgot password) */
 .field input.code-input { font-size: 1.375rem; font-variant-numeric: tabular-nums; letter-spacing: 0.3em; text-align: center; }
@@ -324,6 +341,12 @@ button:disabled { cursor: not-allowed; }
 .search-field { display: flex; align-items: center; gap: var(--space-2); flex: 0 1 300px; min-height: 44px; padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--white); color: var(--ink-soft); transition: border-color 140ms, box-shadow 140ms; }
 .search-field input { width: 100%; padding: 9px 0; border: 0; background: none; color: var(--ink); outline: none; font-size: var(--text-md); }
 .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr)); gap: var(--space-4); }
+
+/* "You may like" on the basket page */
+.suggestions { display: grid; gap: var(--space-4); margin-top: var(--space-7); }
+.suggestions h2 { font-size: var(--text-xl); font-weight: 700; }
+.suggestion-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+.suggestion-card .food-card-image { aspect-ratio: 4 / 3; }
 .food-card { display: flex; flex-direction: column; overflow: hidden; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); transition: transform 200ms ease, box-shadow 200ms ease; }
 .food-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .food-card.is-unavailable .media img { filter: grayscale(0.7); opacity: 0.7; }
@@ -606,6 +629,11 @@ button:disabled { cursor: not-allowed; }
   .basket-row-total { grid-column: 3; grid-row: 2; white-space: nowrap; justify-self: end; }
   .basket-row .icon-btn { grid-column: 3; grid-row: 1; justify-self: end; }
   .checkout-layout { padding-bottom: 76px; }
+  .checkout-layout:has(+ .suggestions) { padding-bottom: 0; }
+  .checkout-layout + .suggestions { padding-bottom: 76px; }
+  .suggestion-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .suggestion-card .food-card-body { padding: 10px var(--space-3) var(--space-3); }
+  .suggestion-card .food-card-footer { flex-wrap: wrap; row-gap: var(--space-2); }
   .checkout-summary > .btn { display: none; }
   .checkout-bar { position: fixed; inset: auto 0 calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px)); z-index: 34; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: 10px var(--space-4); background: var(--white); border-top: 1px solid var(--line); box-shadow: 0 -6px 18px rgb(18 41 59 / 8%); }
   .checkout-bar strong { display: block; font-family: var(--font-display); font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
