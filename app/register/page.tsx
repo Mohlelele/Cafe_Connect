@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { RegisterForm } from '@/components/AuthForms';
 import { getCurrentProfile } from '@/lib/session';
 
-export const metadata: Metadata = { title: 'Create account' };
+export const metadata: Metadata = { title: 'Create account', description: 'Create a Cafe Connect account and order ahead.' };
 
 export default async function RegisterPage() {
   if (await getCurrentProfile()) redirect('/');

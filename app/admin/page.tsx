@@ -18,13 +18,14 @@ export default async function AdminPage() {
     { label: 'Open orders', value: String(orders.length), icon: <ClockIcon /> },
     { label: 'Orders today', value: String(stats.ordersToday), icon: <ClipboardIcon /> },
     { label: 'Paid today', value: formatRand(stats.revenueToday), icon: <WalletIcon /> },
-    { label: 'Items on menu', value: String(stats.availableItems), icon: <UtensilsIcon /> },
+    { label: 'Items available', value: String(stats.availableItems), icon: <UtensilsIcon /> },
   ];
 
   return (
-    <main className="page page-wide">
-      <LiveUpdates tables={['orders', 'menu_items']} />
-      <PageHeader title="Live orders" subtitle="New orders appear here automatically." />
+    <main className="page">
+      <PageHeader title="Live orders" subtitle="New orders appear here automatically.">
+        <LiveUpdates tables={['orders', 'menu_items']} showStatus />
+      </PageHeader>
       <div className="stat-grid">
         {tiles.map((tile) => (
           <div className="stat" key={tile.label}>

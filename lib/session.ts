@@ -6,10 +6,10 @@ import { cache } from 'react';
 import { LOGIN_VIEW_COOKIE } from '@/lib/login-view';
 import { prisma } from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
-import type { Profile } from '@/lib/types';
+import type { Profile, UserRole } from '@/lib/types';
 
 // Finds the logged-in account. cache() means this only runs once per page load.
-const getAccount = cache(async (): Promise<Profile | null> => {
+const getAccount = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -20,18 +20,20 @@ const getAccount = cache(async (): Promise<Profile | null> => {
   });
 });
 
-// Staff can log in on the student page to use the site as a student.
-// The cookie can only lower access: the admin role always comes from the database.
+// Staff can use the site as a student. The cookie can only lower access:
+// the admin role, and so isStaff, always comes from the database.
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   const account = await getAccount();
   if (!account) return null;
 
+  const isStaff = account.role === 'admin';
   const cookieStore = await cookies();
-  const chosenStudent = cookieStore.get(LOGIN_VIEW_COOKIE)?.value === 'student';
-  return account.role === 'admin' && chosenStudent ? { ...account, role: 'student' } : account;
+  const usingStudentView = cookieStore.get(LOGIN_VIEW_COOKIE)?.value === 'student';
+  const role: UserRole = isStaff && !usingStudentView ? 'admin' : 'student';
+  return { ...account, role, isStaff };
 });
 
-// The account's real role, whichever login page was used.
+// The account's real role, whichever view it is using.
 export async function getAccountRole() {
   return (await getAccount())?.role ?? null;
 }

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ReceiptIcon } from '@/components/Icons';
 import LiveUpdates from '@/components/LiveUpdates';
 import OrderCard from '@/components/OrderCard';
 import { EmptyState, PageHeader } from '@/components/ui';
 import { getStudentOrders } from '@/lib/data';
 import { requireStudent } from '@/lib/session';
 
-export const metadata: Metadata = { title: 'My orders' };
+export const metadata: Metadata = { title: 'My orders', description: 'Follow your cafeteria orders from the kitchen to collection.' };
 
 export default async function OrdersPage() {
   const student = await requireStudent();
@@ -16,13 +17,12 @@ export default async function OrdersPage() {
 
   return (
     <main className="page page-narrow">
-      <LiveUpdates tables={['orders']} />
-      <PageHeader title="My orders" subtitle="This page updates as the kitchen works on your order.">
-        <Link href="/menu" className="btn btn-secondary">Back to menu</Link>
+      <PageHeader title="My orders" subtitle="Follow your order from the kitchen to collection.">
+        <LiveUpdates tables={['orders']} showStatus />
       </PageHeader>
 
       {orders.length === 0 ? (
-        <EmptyState title="No orders yet">
+        <EmptyState title="No orders yet" icon={<ReceiptIcon />}>
           <p>Your orders will appear here once you place one.</p>
           <Link href="/menu" className="btn btn-primary">Browse the menu</Link>
         </EmptyState>

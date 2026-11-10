@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
-import { AuthCard, CONNECTION_ERROR, FormError } from '@/components/ui';
+import { AuthCard, CONNECTION_ERROR, FormError, PasswordField } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 
 const MIN_PASSWORD_LENGTH = 8;
 const SHORT_PASSWORD = `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
+const PASSWORD_HINT = `At least ${MIN_PASSWORD_LENGTH} characters.`;
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 export function RegisterForm() {
@@ -84,12 +85,8 @@ export function RegisterForm() {
           <span>Email</span>
           <input type="email" name="email" autoComplete="email" value={form.email} onChange={handleChange} required />
         </label>
-        <label className="field">
-          <span>Password</span>
-          <input type="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={form.password} onChange={handleChange} required />
-          <small>At least {MIN_PASSWORD_LENGTH} characters.</small>
-        </label>
-        <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
+        <PasswordField label="Password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={form.password} onChange={handleChange} hint={PASSWORD_HINT} />
+        <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={isSubmitting}>
           {isSubmitting ? 'Creating account…' : 'Create account'}
         </button>
       </form>
@@ -143,7 +140,7 @@ export function ForgotPasswordForm() {
             <span>Email</span>
             <input type="email" name="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
           </label>
-          <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
+          <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={isSubmitting}>
             {isSubmitting ? 'Sending…' : 'Send reset link'}
           </button>
         </form>
@@ -187,15 +184,11 @@ export function ResetPasswordForm() {
   };
 
   return (
-    <AuthCard title="Choose a new password">
+    <AuthCard title="Choose a new password" subtitle="You'll use this to log in from now on.">
       <form className="form" method="post" onSubmit={handleSubmit}>
         <FormError message={error} />
-        <label className="field">
-          <span>New password</span>
-          <input type="password" name="newPassword" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => setPassword(event.target.value)} required />
-          <small>At least {MIN_PASSWORD_LENGTH} characters.</small>
-        </label>
-        <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
+        <PasswordField label="New password" name="newPassword" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(event) => setPassword(event.target.value)} hint={PASSWORD_HINT} />
+        <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={isSubmitting}>
           {isSubmitting ? 'Saving…' : 'Save new password'}
         </button>
       </form>

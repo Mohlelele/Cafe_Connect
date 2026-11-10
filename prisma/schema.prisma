@@ -86,11 +86,13 @@ model Order {
   totalAmount   Decimal       @map("total_amount") @db.Decimal(10, 2)
   status        OrderStatus   @default(Pending)
   statusUpdatedAt DateTime    @default(now()) @map("status_updated_at") @db.Timestamptz
+  idempotencyKey String?     @map("idempotency_key") @db.Uuid
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
   student       Profile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   items         OrderItem[]
   payment       Payment?
 
+  @@unique([studentId, idempotencyKey], map: "orders_student_idempotency_key")
   @@map("orders")
 }
 
@@ -121,7 +123,7 @@ model Payment {
 
 model Announcement {
   id        String   @id @default(uuid()) @db.Uuid
-  title     String   @unique
+  title     String
   body      String
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

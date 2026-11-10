@@ -11,7 +11,7 @@ export default async function AdminAnnouncementsPage() {
   const announcements = await getAnnouncements();
 
   return (
-    <main className="page page-wide">
+    <main className="page">
       <PageHeader title="Announcements" subtitle="The newest announcement is shown at the top of the student menu." />
       <AnnouncementManager announcements={announcements} />
     </main>

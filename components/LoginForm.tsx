@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { getSignedInRole } from '@/app/actions';
-import { AuthCard, CONNECTION_ERROR, FormError } from '@/components/ui';
+import { AuthCard, CONNECTION_ERROR, FormError, PasswordField } from '@/components/ui';
 import { rememberLoginView } from '@/lib/login-view';
 import { createClient } from '@/lib/supabase/client';
 
@@ -63,14 +63,15 @@ export default function LoginForm({ variant, notice }: { variant: 'student' | 'a
           <span>Email</span>
           <input type="email" name="email" autoComplete="email" value={form.email} onChange={handleChange} required />
         </label>
-        <label className="field">
-          <span className="field-label-row">
-            Password
-            {isAdminForm ? null : <Link href="/forgot-password" className="text-link">Forgot password?</Link>}
-          </span>
-          <input type="password" name="password" autoComplete="current-password" value={form.password} onChange={handleChange} required />
-        </label>
-        <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
+        <PasswordField
+          label="Password"
+          name="password"
+          autoComplete="current-password"
+          value={form.password}
+          onChange={handleChange}
+          labelExtra={<Link href="/forgot-password" className="text-link">Forgot password?</Link>}
+        />
+        <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={isSubmitting}>
           {isSubmitting ? 'Logging in…' : 'Log in'}
         </button>
       </form>
@@ -79,7 +80,7 @@ export default function LoginForm({ variant, notice }: { variant: 'student' | 'a
         {isAdminForm ? (
           <Link href="/login" className="text-link">Student login</Link>
         ) : (
-          <>New here? <Link href="/register" className="text-link">Create an account</Link></>
+          <>New here? <Link href="/register" className="text-link">Create an account</Link> · <Link href="/admin-login" className="text-link">Staff sign in</Link></>
         )}
       </p>
     </AuthCard>

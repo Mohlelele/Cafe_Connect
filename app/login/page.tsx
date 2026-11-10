@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import LoginForm from '@/components/LoginForm';
 import { getCurrentProfile } from '@/lib/session';
 
-export const metadata: Metadata = { title: 'Log in' };
+export const metadata: Metadata = { title: 'Log in', description: 'Log in to order from the campus cafeteria.' };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   if (await getCurrentProfile()) redirect('/');

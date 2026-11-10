@@ -12,7 +12,7 @@ export default async function AdminStudentsPage() {
   const students = await getStudents();
 
   return (
-    <main className="page page-wide">
+    <main className="page">
       <PageHeader title="Students" subtitle="Create accounts and help students who are locked out." />
       <StudentManager students={students} toolsReady={hasAdminClient()} />
     </main>
